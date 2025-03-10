@@ -14,7 +14,10 @@ import {
   Form,
   Field,
   CellGroup,
-  NavBar
+  NavBar,
+  Pagination,
+  Empty,
+  Dialog
 } from 'vant'
 import 'vant/lib/index.css'
 
@@ -34,5 +37,8 @@ app.use(Form)
 app.use(Field)
 app.use(CellGroup)
 app.use(NavBar)
+app.use(Pagination)
+app.use(Empty)
+app.use(Dialog)
 
 app.mount('#app')
