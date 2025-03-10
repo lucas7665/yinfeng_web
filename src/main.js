@@ -17,7 +17,9 @@ import {
   NavBar,
   Pagination,
   Empty,
-  Dialog
+  Dialog,
+  Radio,
+  RadioGroup
 } from 'vant'
 import 'vant/lib/index.css'
 
@@ -40,5 +42,7 @@ app.use(NavBar)
 app.use(Pagination)
 app.use(Empty)
 app.use(Dialog)
+app.use(Radio)
+app.use(RadioGroup)
 
 app.mount('#app')

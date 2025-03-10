@@ -10,6 +10,13 @@
           <!-- 报告列表 -->
           <div class="report-list">
             <van-cell v-for="report in reports" :key="report.id">
+              <template #icon>
+                <van-radio 
+                  :name="report.id" 
+                  v-model="selectedReportId"
+                  class="report-radio"
+                />
+              </template>
               <template #title>
                 <div class="report-title">{{ report.fileName }}</div>
                 <div class="report-time">{{ formatDate(report.uploadTime) }}</div>
@@ -52,7 +59,7 @@
             block 
             @click="generatePDF" 
             class="generate-btn"
-            :disabled="!reports.length"
+            :disabled="!selectedReportId"
           >
             生成PDF报告
           </van-button>
@@ -120,10 +127,13 @@ const fileInput = ref(null)
 const showPreview = ref(false)
 const currentFile = ref(null)
 
+// 单选框相关
+const selectedReportId = ref(null)
+
 // 创建 axios 实例
 const http = axios.create({
   baseURL: 'http://localhost:8082',
-  timeout: 10000,
+  timeout: 60000,  // 增加到 60 秒
   headers: {
     'Content-Type': 'application/json'
   }
@@ -178,6 +188,7 @@ const getReportList = async () => {
 
 const onPageChange = (page) => {
   currentPage.value = page
+  selectedReportId.value = null  // 清除选择
   getReportList()
 }
 
@@ -225,17 +236,37 @@ const uploadFile = async (e) => {
 }
 
 const generatePDF = async () => {
-  if (!reports.value.length) {
-    showToast('暂无可生成的报告')
+  if (!selectedReportId.value) {
+    showToast('请先选择一份报告')
     return
   }
 
-  const latestReport = reports.value[0]
+  const selectedReport = reports.value.find(report => report.id === selectedReportId.value)
+  if (!selectedReport) {
+    showToast('所选报告不存在')
+    return
+  }
+
   try {
-    const res = await http.post(`/api/health-plan/generatepdf`, {
-      reportId: latestReport.id,
-      reportUrl: latestReport.fileUrl
+    showLoadingToast({
+      message: '生成中...',
+      forbidClick: true,
+      duration: 0  // 设置为 0 表示不自动关闭
     })
+
+    // 使用 URLSearchParams 构建表单数据
+    const params = new URLSearchParams()
+    params.append('reportId', selectedReport.id)
+    params.append('reportUrl', selectedReport.fileUrl)
+    params.append('planType', '1')
+
+    const res = await http.post('/api/health-plan/generatepdf', params, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      timeout: 120000  // 为生成 PDF 单独设置 120 秒超时
+    })
+    
     if (res.data.code === 0) {
       showToast('PDF生成成功')
     } else {
@@ -250,6 +281,8 @@ const generatePDF = async () => {
       showToast('PDF生成失败')
       console.error('生成PDF失败:', error)
     }
+  } finally {
+    closeToast()
   }
 }
 
@@ -403,5 +436,11 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   gap: 16px;
+}
+
+.report-radio {
+  margin-right: 8px;
+  display: flex;
+  align-items: center;
 }
 </style> 
