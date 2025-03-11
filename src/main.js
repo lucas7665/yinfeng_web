@@ -19,7 +19,8 @@ import {
   Empty,
   Dialog,
   Radio,
-  RadioGroup
+  RadioGroup,
+  Image as VanImage
 } from 'vant'
 import 'vant/lib/index.css'
 
@@ -44,5 +45,6 @@ app.use(Empty)
 app.use(Dialog)
 app.use(Radio)
 app.use(RadioGroup)
+app.use(VanImage)
 
 app.mount('#app')
