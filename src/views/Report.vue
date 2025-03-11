@@ -8,46 +8,44 @@
           </van-button>
 
           <!-- 报告列表 -->
-          <div class="report-list-wrapper">
-            <div class="report-list">
-              <van-cell v-for="report in reports" :key="report.id">
-                <template #icon>
-                  <van-radio 
-                    :name="report.id" 
-                    v-model="selectedReportId"
-                    class="report-radio"
-                  />
-                </template>
-                <template #title>
-                  <div class="report-title">{{ report.fileName }}</div>
-                  <div class="report-time">{{ formatDate(report.uploadTime) }}</div>
-                </template>
-                <template #right-icon>
-                  <div class="cell-right">
-                    <van-tag :type="report.status === 1 ? 'success' : 'warning'" class="status-tag">
-                      {{ report.status === 1 ? '已上传' : '处理中' }}
-                    </van-tag>
-                    <van-button 
-                      v-if="report.status === 1" 
-                      type="primary" 
-                      size="small" 
-                      @click.stop="viewFile(report)"
-                      class="view-btn"
-                    >
-                      查看
-                    </van-button>
-                    <van-button 
-                      type="danger" 
-                      size="small" 
-                      @click.stop="handleDelete(report)"
-                      class="delete-btn"
-                    >
-                      删除
-                    </van-button>
-                  </div>
-                </template>
-              </van-cell>
-            </div>
+          <div class="report-list">
+            <van-cell v-for="report in reports" :key="report.id">
+              <template #icon>
+                <van-radio 
+                  :name="report.id" 
+                  v-model="selectedReportId"
+                  class="report-radio"
+                />
+              </template>
+              <template #title>
+                <div class="report-title">{{ report.fileName }}</div>
+                <div class="report-time">{{ formatDate(report.uploadTime) }}</div>
+              </template>
+              <template #right-icon>
+                <div class="cell-right">
+                  <van-tag :type="report.status === 1 ? 'success' : 'warning'" class="status-tag">
+                    {{ report.status === 1 ? '已上传' : '处理中' }}
+                  </van-tag>
+                  <van-button 
+                    v-if="report.status === 1" 
+                    type="primary" 
+                    size="small" 
+                    @click.stop="viewFile(report)"
+                    class="view-btn"
+                  >
+                    查看
+                  </van-button>
+                  <van-button 
+                    type="danger" 
+                    size="small" 
+                    @click.stop="handleDelete(report)"
+                    class="delete-btn"
+                  >
+                    删除
+                  </van-button>
+                </div>
+              </template>
+            </van-cell>
           </div>
 
           <!-- 分页器 -->
@@ -409,35 +407,8 @@ onMounted(() => {
   margin-bottom: 16px;
 }
 
-.report-list-wrapper {
-  height: calc(100vh - 300px);  /* 减去其他元素的高度 */
-  overflow-y: auto;
-  background: #fff;
-  border-radius: 8px;
-  margin-bottom: 16px;
-}
-
 .report-list {
-  padding: 8px 0;
-}
-
-/* 自定义滚动条样式 */
-.report-list-wrapper::-webkit-scrollbar {
-  width: 6px;
-}
-
-.report-list-wrapper::-webkit-scrollbar-track {
-  background: #f5f5f5;
-  border-radius: 3px;
-}
-
-.report-list-wrapper::-webkit-scrollbar-thumb {
-  background: #ddd;
-  border-radius: 3px;
-}
-
-.report-list-wrapper::-webkit-scrollbar-thumb:hover {
-  background: #ccc;
+  margin-bottom: 16px;
 }
 
 .pagination-wrapper {
