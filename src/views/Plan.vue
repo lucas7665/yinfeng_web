@@ -1,47 +1,55 @@
 <template>
   <div class="plan-page">
-    <!-- 健康方案列表 -->
-    <div class="plan-section">
-      <div class="section-title">健康方案列表</div>
-      <van-empty v-if="!loading && !plans.length" description="暂无健康方案" />
-      <template v-else>
-        <van-cell-group inset>
-          <van-cell v-for="(plan, index) in plans" :key="plan.id">
-            <template #title>
-              <div class="plan-title">
-                第{{ getDisplayIndex(index) }}次健康方案
+    <van-tabs v-model:active="activeTab" sticky>
+      <van-tab title="我的方案" name="my">
+        <div class="content">
+          <!-- 健康方案列表 -->
+          <div class="plan-section">
+            <van-empty v-if="!loading && !plans.length" description="暂无健康方案" />
+            <template v-else>
+              <van-cell-group inset>
+                <van-cell v-for="(plan, index) in plans" :key="plan.id">
+                  <template #title>
+                    <div class="plan-title">
+                      第{{ getDisplayIndex(index) }}次健康方案
+                    </div>
+                  </template>
+                  <template #label>
+                    <div class="plan-info">
+                      <span class="plan-time">生成时间：{{ formatDate(plan.createTime) }}</span>
+                    </div>
+                  </template>
+                  <template #right-icon>
+                    <van-button 
+                      type="primary" 
+                      size="small" 
+                      @click="viewPlan(plan, index)"
+                      class="view-btn"
+                    >
+                      查看
+                    </van-button>
+                  </template>
+                </van-cell>
+              </van-cell-group>
+              <!-- 分页器 -->
+              <div class="pagination-wrapper">
+                <van-pagination
+                  v-model="currentPage"
+                  :total-items="total"
+                  :items-per-page="pageSize"
+                  :show-page-size="3"
+                  force-ellipses
+                  @change="onPageChange"
+                />
               </div>
             </template>
-            <template #label>
-              <div class="plan-info">
-                <span class="plan-time">生成时间：{{ formatDate(plan.createTime) }}</span>
-              </div>
-            </template>
-            <template #right-icon>
-              <van-button 
-                type="primary" 
-                size="small" 
-                @click="viewPlan(plan, index)"
-                class="view-btn"
-              >
-                查看
-              </van-button>
-            </template>
-          </van-cell>
-        </van-cell-group>
-        <!-- 分页器 -->
-        <div class="pagination-wrapper">
-          <van-pagination
-            v-model="currentPage"
-            :total-items="total"
-            :items-per-page="pageSize"
-            :show-page-size="3"
-            force-ellipses
-            @change="onPageChange"
-          />
+          </div>
         </div>
-      </template>
-    </div>
+      </van-tab>
+      <van-tab title="他人方案" name="others">
+        <div class="empty-tip">暂无他人方案</div>
+      </van-tab>
+    </van-tabs>
 
     <!-- 预览弹窗 -->
     <van-dialog
@@ -70,12 +78,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { showToast, showLoadingToast, closeToast } from 'vant'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 
 const router = useRouter()
+const activeTab = ref('my')
 const plans = ref([])
 const loading = ref(false)
 const currentPage = ref(1)
@@ -90,7 +99,7 @@ const previewTitle = ref('')
 // 创建 axios 实例
 const http = axios.create({
   baseURL: 'http://localhost:8082',
-  timeout: 10000,
+  timeout: 60000,
   headers: {
     'Content-Type': 'application/json'
   }
@@ -120,7 +129,8 @@ const getPlanList = async () => {
       params: {
         page: currentPage.value,
         size: pageSize,
-        planType: 1
+        planType: 1,
+        isOwn: activeTab.value === 'my' ? 1 : 0  // 根据 tab 区分是否查询自己的方案
       }
     })
     
@@ -145,6 +155,12 @@ const getPlanList = async () => {
   }
 }
 
+// 监听 tab 切换
+watch(activeTab, () => {
+  currentPage.value = 1  // 切换 tab 时重置页码
+  getPlanList()
+})
+
 // 分页变化处理
 const onPageChange = (page) => {
   currentPage.value = page
@@ -156,7 +172,7 @@ const getDisplayIndex = (index) => {
   return (currentPage.value - 1) * pageSize + index + 1
 }
 
-// 查看方案（修改标题显示）
+// 查看方案
 const viewPlan = (plan, index) => {
   currentPlan.value = plan
   previewTitle.value = `第${getDisplayIndex(index)}次健康方案`
@@ -285,5 +301,15 @@ onMounted(() => {
 .plan-content {
   white-space: pre-wrap;
   line-height: 1.6;
+}
+
+.content {
+  padding: 16px;
+}
+
+.empty-tip {
+  text-align: center;
+  color: #999;
+  padding: 32px 0;
 }
 </style> 
