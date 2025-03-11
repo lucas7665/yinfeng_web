@@ -20,14 +20,24 @@
                     </div>
                   </template>
                   <template #right-icon>
-                    <van-button 
-                      type="primary" 
-                      size="small" 
-                      @click="viewPlan(plan, index)"
-                      class="view-btn"
-                    >
-                      查看
-                    </van-button>
+                    <div class="action-buttons">
+                      <van-button 
+                        type="primary" 
+                        size="small" 
+                        @click="viewPlan(plan, index)"
+                        class="view-btn"
+                      >
+                        查看
+                      </van-button>
+                      <van-button 
+                        type="danger" 
+                        size="small" 
+                        @click="handleDelete(plan)"
+                        class="delete-btn"
+                      >
+                        删除
+                      </van-button>
+                    </div>
                   </template>
                 </van-cell>
               </van-cell-group>
@@ -74,6 +84,18 @@
         </div>
       </div>
     </van-dialog>
+
+    <!-- 删除确认弹窗 -->
+    <van-dialog
+      v-model:show="showDeleteDialog"
+      title="删除确认"
+      show-cancel-button
+      @confirm="confirmDelete"
+    >
+      <div class="delete-confirm-content">
+        确定要删除这份健康方案吗？此操作不可恢复。
+      </div>
+    </van-dialog>
   </div>
 </template>
 
@@ -95,6 +117,10 @@ const total = ref(0)
 const showPreview = ref(false)
 const currentPlan = ref(null)
 const previewTitle = ref('')
+
+// 删除相关
+const showDeleteDialog = ref(false)
+const planToDelete = ref(null)
 
 // 创建 axios 实例
 const http = axios.create({
@@ -206,6 +232,49 @@ const startResize = (e) => {
   document.addEventListener('mouseup', handleMouseUp)
 }
 
+// 处理删除按钮点击
+const handleDelete = (plan) => {
+  planToDelete.value = plan
+  showDeleteDialog.value = true
+}
+
+// 确认删除
+const confirmDelete = async () => {
+  if (!planToDelete.value) return
+
+  try {
+    showLoadingToast({
+      message: '删除中...',
+      forbidClick: true,
+    })
+
+    const res = await http.delete(`/api/v1/reports/healpth/${planToDelete.value.id}`)
+    
+    if (res.data.code === 0) {
+      showToast('删除成功')
+      // 如果当前页只有一条数据且不是第一页，则跳转到上一页
+      if (plans.value.length === 1 && currentPage.value > 1) {
+        currentPage.value--
+      }
+      getPlanList()  // 刷新列表
+    } else {
+      showToast(res.data.message || '删除失败')
+    }
+  } catch (error) {
+    console.error('删除失败:', error)
+    if (error.response?.status === 403 || error.response?.status === 401) {
+      showToast('登录已过期，请重新登录')
+      localStorage.removeItem('token')
+      router.push('/login')
+    } else {
+      showToast('删除失败，请重试')
+    }
+  } finally {
+    closeToast()
+    planToDelete.value = null
+  }
+}
+
 onMounted(() => {
   getPlanList()
 })
@@ -244,9 +313,14 @@ onMounted(() => {
   margin: 16px 0;
 }
 
-.view-btn {
+.view-btn,
+.delete-btn {
   font-size: 12px;
   padding: 0 12px;
+}
+
+.delete-btn {
+  margin-left: 8px;
 }
 
 .preview-dialog {
@@ -311,5 +385,17 @@ onMounted(() => {
   text-align: center;
   color: #999;
   padding: 32px 0;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.delete-confirm-content {
+  padding: 16px;
+  text-align: center;
+  color: #666;
 }
 </style> 
