@@ -12,7 +12,7 @@
         <van-cell
           v-for="session in sessions"
           :key="session.id"
-          :title="session.title || '新会话'"
+          :title="formatSessionTitle(session)"
           :class="{ active: currentSession === session.id }"
           @click="switchSession(session)"
         >
@@ -134,50 +134,74 @@ const toggleSidebar = () => {
   showSidebar.value = !showSidebar.value
 }
 
-// 创建新会话
-const createNewSession = async () => {
+// 获取会话列表
+const getSessionList = async () => {
   try {
-    const res = await http.post(`/api/v1/chats/${CHAT_ID}/sessions`)
-    if (res.data.code === 0) {
-      const sessionData = res.data.data.data  // 注意这里的数据结构
-      const newSession = {
-        id: sessionData.id,  // 使用正确的会话ID
-        title: sessionData.name,
-        createTime: sessionData.create_time
+    const res = await http.get(`/api/v1/chats/${CHAT_ID}/sessionsList`, {
+      params: {
+        page: 1,
+        pageSize: 30,
+        orderby: 'create_time',
+        desc: true
       }
-      sessions.value.unshift(newSession)
-      // 添加系统返回的欢迎消息
-      messages.value = sessionData.messages || []
-      switchSession(newSession)
-    } else {
-      showToast('创建会话失败')
+    })
+
+    if (res.data.code === 0) {
+      const sessionList = res.data.data.data || []
+      sessions.value = sessionList.map(session => {
+        // 找到最后一条非系统消息作为会话标题
+        let title = '新会话'
+        if (session.messages && session.messages.length > 0) {
+          const userMessages = session.messages.filter(msg => msg.role === 'user')
+          if (userMessages.length > 0) {
+            title = userMessages[0].content
+          }
+        }
+        
+        return {
+          id: session.id,
+          title: title,
+          createTime: session.create_time,
+          messages: session.messages || []
+        }
+      })
+
+      // 如果有会话，自动选择第一个
+      if (sessions.value.length > 0) {
+        const firstSession = sessions.value[0]
+        currentSession.value = firstSession.id
+        currentSessionTitle.value = firstSession.title
+        messages.value = firstSession.messages || []
+        await scrollToBottom()
+      }
     }
   } catch (error) {
-    console.error('创建会话失败:', error)
-    showToast('创建会话失败')
+    console.error('获取会话列表失败:', error)
+    showToast('获取会话列表失败')
   }
 }
 
 // 切换会话
 const switchSession = async (session) => {
+  if (currentSession.value === session.id) return  // 如果是当前会话则不切换
+  
   currentSession.value = session.id
   currentSessionTitle.value = session.title
-  messages.value = []
-  await loadMessages(session.id)
+  messages.value = session.messages || []  // 直接使用会话中的消息
+  await scrollToBottom()
 }
 
-// 加载会话消息历史
-const loadMessages = async (sessionId) => {
-  try {
-    const res = await http.get(`/api/v1/chats/${CHAT_ID}/sessions/${sessionId}/messages`)
-    if (res.data.code === 0) {
-      messages.value = res.data.data.messages || []
-      await scrollToBottom()
-    }
-  } catch (error) {
-    console.error('加载消息失败:', error)
-    showToast('加载消息失败')
+// 格式化会话标题
+const formatSessionTitle = (session) => {
+  if (session.title && session.title !== '新会话') {
+    return session.title
   }
+  return `会话 ${new Date(session.createTime).toLocaleString('zh-CN', {
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric'
+  })}`
 }
 
 // 发送消息
@@ -232,9 +256,42 @@ const scrollToBottom = async () => {
   }
 }
 
-onMounted(() => {
-  createNewSession()
+// 修改 onMounted
+onMounted(async () => {
+  await getSessionList()  // 进入页面时获取会话列表
 })
+
+// 修改 createNewSession，创建完新会话后更新列表
+const createNewSession = async () => {
+  try {
+    const res = await http.post(`/api/v1/chats/${CHAT_ID}/sessions`)
+    if (res.data.code === 0) {
+      const sessionData = res.data.data.data
+      const newSession = {
+        id: sessionData.id,
+        title: sessionData.name,
+        createTime: sessionData.create_time
+      }
+      sessions.value.unshift(newSession)  // 添加到列表开头
+      currentSession.value = newSession.id
+      currentSessionTitle.value = newSession.title
+      
+      // 添加系统的欢迎消息
+      if (sessionData.messages && sessionData.messages.length > 0) {
+        messages.value = sessionData.messages
+      } else {
+        messages.value = []
+      }
+      
+      await scrollToBottom()
+    } else {
+      showToast('创建会话失败')
+    }
+  } catch (error) {
+    console.error('创建会话失败:', error)
+    showToast('创建会话失败')
+  }
+}
 </script>
 
 <style scoped>
@@ -398,5 +455,20 @@ onMounted(() => {
   .chat-main {
     padding-bottom: env(safe-area-inset-bottom);  /* 适配 iPhone 底部安全区域 */
   }
+}
+
+.session-list .van-cell {
+  padding: 12px 16px;
+}
+
+.session-list .van-cell.active {
+  background-color: #e8f3ff;
+}
+
+.session-list .van-cell__title {
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style> 
