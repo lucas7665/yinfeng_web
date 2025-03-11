@@ -7,8 +7,9 @@
           round
           width="64"
           height="64"
-          :src="userInfo.avatar || 'https://fastly.jsdelivr.net/npm/@vant/assets/cat.jpeg'"
+          :src="userInfo.avatar || defaultAvatars[0]"
           class="avatar"
+          @click="showAvatarDialog = true"
         />
         <div class="user-name">{{ userInfo.nickname || userInfo.username || '未设置昵称' }}</div>
       </div>
@@ -85,6 +86,31 @@
       </van-cell-group>
     </van-form>
   </van-dialog>
+
+  <!-- 头像选择弹窗 -->
+  <van-dialog
+    v-model:show="showAvatarDialog"
+    title="选择头像"
+    show-cancel-button
+    @confirm="handleAvatarConfirm"
+  >
+    <div class="avatar-list">
+      <div 
+        v-for="(avatar, index) in defaultAvatars" 
+        :key="index"
+        class="avatar-item"
+        :class="{ active: selectedAvatar === avatar }"
+        @click="selectedAvatar = avatar"
+      >
+        <van-image
+          round
+          width="60"
+          height="60"
+          :src="avatar"
+        />
+      </div>
+    </div>
+  </van-dialog>
 </template>
 
 <script setup>
@@ -103,6 +129,19 @@ const editForm = ref({
   height: '',
   weight: ''
 })
+
+// 修改默认头像列表为在线生成的头像
+const defaultAvatars = [
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix&backgroundColor=b6e3f4',
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka&backgroundColor=d1d4f9',
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=Luna&backgroundColor=c0aede',
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=Max&backgroundColor=ffdfbf',
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=Zoe&backgroundColor=ffd5dc'
+]
+
+// 头像选择相关
+const showAvatarDialog = ref(false)
+const selectedAvatar = ref('')
 
 // 创建 axios 实例
 const http = axios.create({
@@ -220,6 +259,43 @@ const handleLogout = () => {
   showToast('已退出登录')
 }
 
+// 确认头像选择
+const handleAvatarConfirm = async () => {
+  if (!selectedAvatar.value) {
+    showToast('请选择头像')
+    return
+  }
+
+  try {
+    showLoadingToast({
+      message: '保存中...',
+      forbidClick: true,
+    })
+
+    const res = await http.put('/api/profile/updateInfo', {
+      avatar: selectedAvatar.value
+    })
+    
+    if (res.data.code === 0) {
+      showToast('头像更新成功')
+      getUserInfo()  // 刷新用户信息
+    } else {
+      showToast(res.data.message || '更新失败')
+    }
+  } catch (error) {
+    console.error('更新头像失败:', error)
+    if (error.response?.status === 403 || error.response?.status === 401) {
+      showToast('登录已过期，请重新登录')
+      localStorage.removeItem('token')
+      router.push('/login')
+    } else {
+      showToast('更新失败，请重试')
+    }
+  } finally {
+    closeToast()
+  }
+}
+
 onMounted(() => {
   getUserInfo()  // 只调用获取用户信息的接口
 })
@@ -274,5 +350,35 @@ onMounted(() => {
 
 .edit-btn {
   flex-shrink: 0;
+}
+
+.avatar {
+  cursor: pointer;
+}
+
+.avatar-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  padding: 16px;
+}
+
+.avatar-item {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  transition: background-color 0.3s;
+}
+
+.avatar-item:hover {
+  background-color: #f5f5f5;
+}
+
+.avatar-item.active {
+  background-color: #e8f3ff;
+  border: 2px solid #1989fa;
 }
 </style> 
