@@ -26,6 +26,13 @@
           <template #icon>
             <van-icon name="chat-o" class="session-icon" />
           </template>
+          <template #right-icon>
+            <van-icon 
+              name="delete-o" 
+              class="delete-icon"
+              @click.stop="confirmDelete(session)"
+            />
+          </template>
         </van-cell>
       </div>
     </div>
@@ -105,7 +112,7 @@
 
 <script setup>
 import { ref, onMounted, nextTick } from 'vue'
-import { showToast } from 'vant'
+import { showToast, showDialog } from 'vant'
 import axios from 'axios'
 
 const CHAT_ID = 'ff71490cf4b211efae140242ac130006'
@@ -302,6 +309,52 @@ const createNewSession = async () => {
   } catch (error) {
     console.error('创建会话失败:', error)
     showToast('创建会话失败')
+  }
+}
+
+// 确认删除对话框
+const confirmDelete = (session) => {
+  showDialog({
+    title: '删除会话',
+    message: '确定要删除这个会话吗？',
+    showCancelButton: true,
+  }).then(() => {
+    deleteSession(session)
+  }).catch(() => {
+    // 取消删除
+  })
+}
+
+// 删除会话
+const deleteSession = async (session) => {
+  try {
+    const res = await http.delete(`/api/v1/chats/${CHAT_ID}/sessionsDel`, {
+      data: {
+        ids: [session.id]
+      }
+    })
+    
+    if (res.data.code === 0) {
+      // 从列表中移除
+      sessions.value = sessions.value.filter(s => s.id !== session.id)
+      showToast('删除成功')
+      
+      // 如果删除的是当前会话，切换到其他会话或清空
+      if (currentSession.value === session.id) {
+        if (sessions.value.length > 0) {
+          await switchSession(sessions.value[0])
+        } else {
+          currentSession.value = null
+          currentSessionTitle.value = '健康助手'
+          messages.value = []
+        }
+      }
+    } else {
+      showToast('删除失败')
+    }
+  } catch (error) {
+    console.error('删除会话失败:', error)
+    showToast('删除失败')
   }
 }
 </script>
@@ -514,5 +567,34 @@ const createNewSession = async () => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.delete-icon {
+  font-size: 18px;
+  color: #999;
+  padding: 8px;
+  margin-right: -8px;
+  transition: color 0.3s;
+}
+
+.delete-icon:hover {
+  color: #ff4444;
+}
+
+/* 确保删除图标在活跃状态下也可见 */
+.session-list .van-cell.active .delete-icon {
+  color: #666;
+}
+
+.session-list .van-cell.active .delete-icon:hover {
+  color: #ff4444;
+}
+
+/* 优化移动端点击区域 */
+@media (max-width: 768px) {
+  .delete-icon {
+    padding: 12px;
+    margin-right: -12px;
+  }
 }
 </style> 
