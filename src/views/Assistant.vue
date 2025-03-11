@@ -1,5 +1,12 @@
 <template>
   <div class="assistant-page">
+    <!-- 遮罩层 -->
+    <div 
+      v-show="showSidebar" 
+      class="sidebar-overlay"
+      @click="toggleSidebar"
+    ></div>
+
     <!-- 侧边栏 -->
     <div class="sidebar" :class="{ 'sidebar-hidden': !showSidebar }">
       <!-- 新建会话按钮 -->
@@ -29,7 +36,8 @@
       <div class="chat-header">
         <van-icon 
           name="bars" 
-          class="menu-icon" 
+          class="menu-icon"
+          :class="{ 'menu-icon-active': showSidebar }"
           @click="toggleSidebar"
         />
         <span class="session-title">{{ currentSessionTitle }}</span>
@@ -101,7 +109,7 @@ import { showToast } from 'vant'
 import axios from 'axios'
 
 const CHAT_ID = 'ff71490cf4b211efae140242ac130006'
-const showSidebar = ref(true)
+const showSidebar = ref(false)
 const sessions = ref([])
 const currentSession = ref(null)
 const messages = ref([])
@@ -132,6 +140,10 @@ http.interceptors.request.use(config => {
 // 切换侧边栏显示
 const toggleSidebar = () => {
   showSidebar.value = !showSidebar.value
+  // 当打开侧边栏时，确保会话列表是最新的
+  if (showSidebar.value) {
+    getSessionList()
+  }
 }
 
 // 获取会话列表
@@ -301,20 +313,38 @@ const createNewSession = async () => {
   background-color: #f7f8fa;
 }
 
+.sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.3);
+  z-index: 99; /* 低于侧边栏的 z-index */
+}
+
 .sidebar {
   width: 250px;
   background-color: #fff;
   border-right: 1px solid #ebedf0;
   display: flex;
   flex-direction: column;
-  transition: transform 0.3s;
+  transition: all 0.3s ease;
+  position: fixed;  /* 改为 fixed 定位 */
+  left: 0;
+  top: 0;
+  height: 100%;
+  z-index: 100;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+  transform: translateX(-100%);
 }
 
 .sidebar-hidden {
   transform: translateX(-100%);
-  position: absolute;
-  z-index: 100;
-  height: 100%;
+}
+
+.sidebar:not(.sidebar-hidden) {
+  transform: translateX(0);
 }
 
 .new-chat-btn {
@@ -340,6 +370,8 @@ const createNewSession = async () => {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  margin-left: 0;  /* 移除默认的左边距 */
+  transition: margin-left 0.3s;
 }
 
 .chat-header {
@@ -354,6 +386,11 @@ const createNewSession = async () => {
   font-size: 24px;
   margin-right: 12px;
   cursor: pointer;
+  transition: transform 0.3s;
+}
+
+.menu-icon-active {
+  transform: rotate(90deg);
 }
 
 .session-title {
@@ -447,9 +484,16 @@ const createNewSession = async () => {
 
 @media (max-width: 768px) {
   .sidebar {
-    position: absolute;
-    z-index: 100;
-    height: calc(100vh - 50px);  /* 同样减去 TabBar 高度 */
+    position: fixed;
+    height: 100%;
+  }
+
+  .sidebar-overlay {
+    z-index: 999; /* 在移动端提高遮罩层层级 */
+  }
+
+  .sidebar {
+    z-index: 1000;
   }
 
   .chat-main {
