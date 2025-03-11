@@ -161,6 +161,21 @@ http.interceptors.request.use(config => {
   return config
 })
 
+// 获取统计信息
+const getStatistics = async () => {
+  try {
+    const res = await http.get('/api/v1/reports/healpth/count')
+    if (res.data.code === 0) {  // 修改这里，判断 code === 0
+      reportCount.value = res.data.data.reportFileCount || 0
+      planCount.value = res.data.data.healthReportCount || 0
+    } else {
+      console.error('获取统计信息失败:', res.data.message)
+    }
+  } catch (error) {
+    console.error('获取统计信息失败:', error)
+  }
+}
+
 // 获取用户信息
 const getUserInfo = async () => {
   try {
@@ -178,11 +193,6 @@ const getUserInfo = async () => {
         height: userInfo.value.height || '',
         weight: userInfo.value.weight || ''
       }
-      
-      // 如果后端返回了统计数据，就使用后端数据
-      // 否则暂时使用 0
-      reportCount.value = res.data.data.reportCount || 0
-      planCount.value = res.data.data.planCount || 0
     } else {
       showToast(res.data.message || '获取用户信息失败')
     }
@@ -297,7 +307,8 @@ const handleAvatarConfirm = async () => {
 }
 
 onMounted(() => {
-  getUserInfo()  // 只调用获取用户信息的接口
+  getUserInfo()
+  getStatistics()  // 单独调用获取统计信息
 })
 </script>
 

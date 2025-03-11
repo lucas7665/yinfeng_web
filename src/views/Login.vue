@@ -34,36 +34,35 @@
 
         <!-- 手机验证码登录 -->
         <van-tab title="验证码登录">
-          <van-form @submit="onPhoneSubmit">
+          <van-form @submit="onSubmit">
             <van-cell-group inset>
               <van-field
-                v-model="phoneForm.phone"
+                v-model="phone"
                 name="phone"
                 label="手机号"
                 placeholder="请输入手机号"
-                :rules="[{ required: true, pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号' }]"
+                :rules="[{ required: true, message: '请填写手机号' }]"
               />
               <van-field
-                v-model="phoneForm.code"
-                center
-                clearable
+                v-model="code"
+                name="code"
                 label="验证码"
                 placeholder="请输入验证码"
-                :rules="[{ required: true, message: '请输入验证码' }]"
+                :rules="[{ required: true, message: '请填写验证码' }]"
               >
                 <template #button>
-                  <van-button
-                    size="small"
-                    type="primary"
-                    :disabled="isCountingDown"
-                    @click="sendCode"
+                  <van-button 
+                    size="small" 
+                    type="primary" 
+                    @click="getCode"
+                    :disabled="!!cooldown"
                   >
-                    {{ countDown ? `${countDown}s后重试` : '发送验证码' }}
+                    {{ cooldown ? `${cooldown}s后重试` : '获取验证码' }}
                   </van-button>
                 </template>
               </van-field>
             </van-cell-group>
-            <div class="submit-btn">
+            <div style="margin: 16px;">
               <van-button round block type="primary" native-type="submit">
                 登录
               </van-button>
@@ -77,23 +76,19 @@
 
 <script setup>
 import { ref } from 'vue'
-import { showToast } from 'vant'
+import { showToast, showLoadingToast, closeToast } from 'vant'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 
 const router = useRouter()
 const activeTab = ref(0)
-const countDown = ref(0)
-const isCountingDown = ref(false)
+const phone = ref('')
+const code = ref('')
+const cooldown = ref(0)
 
 const passwordForm = ref({
   username: '',
   password: ''
-})
-
-const phoneForm = ref({
-  phone: '',
-  code: ''
 })
 
 // 创建 axios 实例
@@ -127,66 +122,83 @@ const onPasswordSubmit = async (values) => {
   }
 }
 
-// 发送验证码
-const sendCode = async () => {
-  if (!phoneForm.value.phone) {
-    showToast('请输入手机号')
+// 获取验证码
+const getCode = async () => {
+  if (!phone.value) {
+    showToast('请先输入手机号')
     return
   }
-  if (!/^1[3-9]\d{9}$/.test(phoneForm.value.phone)) {
+  
+  // 验证手机号格式
+  if (!/^1[3-9]\d{9}$/.test(phone.value)) {
     showToast('请输入正确的手机号')
     return
   }
 
   try {
-    const res = await http.post('/api/auth/send-code', {
-      phone: phoneForm.value.phone
+    showLoadingToast({
+      message: '发送中...',
+      forbidClick: true,
     })
-    if (res.data.code === 200) {
+
+    // 修改为正确的发送验证码接口
+    const res = await http.post('/api/sms/send-code', {
+      phone: phone.value
+    })
+
+    if (res.data.code === 0) {
       showToast('验证码已发送')
-      startCountDown()
+      // 开始倒计时
+      cooldown.value = 60
+      const timer = setInterval(() => {
+        cooldown.value--
+        if (cooldown.value <= 0) {
+          clearInterval(timer)
+        }
+      }, 1000)
     } else {
       showToast(res.data.message || '发送失败')
     }
   } catch (error) {
+    showToast('发送失败')
     console.error('发送验证码失败:', error)
-    showToast('发送验证码失败')
+  } finally {
+    closeToast()
   }
 }
 
-// 手机验证码登录
-const onPhoneSubmit = async (values) => {
+// 提交登录
+const onSubmit = async () => {
+  if (!phone.value || !code.value) {
+    showToast('请输入手机号和验证码')
+    return
+  }
+
   try {
-    const res = await http.post('/api/auth/login/phone', {
-      phone: values.phone,
-      code: values.code
+    showLoadingToast({
+      message: '登录中...',
+      forbidClick: true,
     })
+
+    // 直接调用登录接口，传入手机号和验证码
+    const res = await http.post('/api/auth/login/phone', {
+      phone: phone.value,
+      code: code.value  // 登录时需要传验证码
+    })
+
     if (res.data.code === 0) {
-      // 保存 token
       localStorage.setItem('token', res.data.data.token)
       showToast('登录成功')
-      // 确保异步操作完成后再跳转
-      await router.push('/report')
+      router.push('/')
     } else {
       showToast(res.data.message || '登录失败')
     }
   } catch (error) {
-    console.error('登录失败:', error)
     showToast('登录失败')
+    console.error('登录失败:', error)
+  } finally {
+    closeToast()
   }
-}
-
-// 倒计时
-const startCountDown = () => {
-  countDown.value = 60
-  isCountingDown.value = true
-  const timer = setInterval(() => {
-    countDown.value--
-    if (countDown.value <= 0) {
-      clearInterval(timer)
-      isCountingDown.value = false
-    }
-  }, 1000)
 }
 </script>
 
