@@ -8,36 +8,46 @@
           </van-button>
 
           <!-- 报告列表 -->
-          <div class="report-list">
-            <van-cell v-for="report in reports" :key="report.id">
-              <template #icon>
-                <van-radio 
-                  :name="report.id" 
-                  v-model="selectedReportId"
-                  class="report-radio"
-                />
-              </template>
-              <template #title>
-                <div class="report-title">{{ report.fileName }}</div>
-                <div class="report-time">{{ formatDate(report.uploadTime) }}</div>
-              </template>
-              <template #right-icon>
-                <div class="cell-right">
-                  <van-tag :type="report.status === 1 ? 'success' : 'warning'" class="status-tag">
-                    {{ report.status === 1 ? '已上传' : '处理中' }}
-                  </van-tag>
-                  <van-button 
-                    v-if="report.status === 1" 
-                    type="primary" 
-                    size="small" 
-                    @click.stop="viewFile(report)"
-                    class="view-btn"
-                  >
-                    查看
-                  </van-button>
-                </div>
-              </template>
-            </van-cell>
+          <div class="report-list-wrapper">
+            <div class="report-list">
+              <van-cell v-for="report in reports" :key="report.id">
+                <template #icon>
+                  <van-radio 
+                    :name="report.id" 
+                    v-model="selectedReportId"
+                    class="report-radio"
+                  />
+                </template>
+                <template #title>
+                  <div class="report-title">{{ report.fileName }}</div>
+                  <div class="report-time">{{ formatDate(report.uploadTime) }}</div>
+                </template>
+                <template #right-icon>
+                  <div class="cell-right">
+                    <van-tag :type="report.status === 1 ? 'success' : 'warning'" class="status-tag">
+                      {{ report.status === 1 ? '已上传' : '处理中' }}
+                    </van-tag>
+                    <van-button 
+                      v-if="report.status === 1" 
+                      type="primary" 
+                      size="small" 
+                      @click.stop="viewFile(report)"
+                      class="view-btn"
+                    >
+                      查看
+                    </van-button>
+                    <van-button 
+                      type="danger" 
+                      size="small" 
+                      @click.stop="handleDelete(report)"
+                      class="delete-btn"
+                    >
+                      删除
+                    </van-button>
+                  </div>
+                </template>
+              </van-cell>
+            </div>
           </div>
 
           <!-- 分页器 -->
@@ -105,6 +115,18 @@
         </div>
       </div>
     </van-dialog>
+
+    <!-- 删除确认弹窗 -->
+    <van-dialog
+      v-model:show="showDeleteDialog"
+      title="删除确认"
+      show-cancel-button
+      @confirm="confirmDelete"
+    >
+      <div class="delete-confirm-content">
+        确定要删除这份报告吗？此操作不可恢复。
+      </div>
+    </van-dialog>
   </div>
 </template>
 
@@ -129,6 +151,10 @@ const currentFile = ref(null)
 
 // 单选框相关
 const selectedReportId = ref(null)
+
+// 删除相关
+const showDeleteDialog = ref(false)
+const reportToDelete = ref(null)
 
 // 创建 axios 实例
 const http = axios.create({
@@ -322,6 +348,49 @@ const startResize = (e) => {
   document.addEventListener('mouseup', handleMouseUp)
 }
 
+// 处理删除按钮点击
+const handleDelete = (report) => {
+  reportToDelete.value = report
+  showDeleteDialog.value = true
+}
+
+// 确认删除
+const confirmDelete = async () => {
+  if (!reportToDelete.value) return
+
+  try {
+    showLoadingToast({
+      message: '删除中...',
+      forbidClick: true,
+    })
+
+    const res = await http.delete(`/api/v1/reports/${reportToDelete.value.id}`)
+    
+    if (res.data.code === 0) {
+      showToast('删除成功')
+      // 如果当前页只有一条数据且不是第一页，则跳转到上一页
+      if (reports.value.length === 1 && currentPage.value > 1) {
+        currentPage.value--
+      }
+      getReportList()  // 刷新列表
+    } else {
+      showToast(res.data.message || '删除失败')
+    }
+  } catch (error) {
+    console.error('删除失败:', error)
+    if (error.response?.status === 403 || error.response?.status === 401) {
+      showToast('登录已过期，请重新登录')
+      localStorage.removeItem('token')
+      router.push('/login')
+    } else {
+      showToast('删除失败，请重试')
+    }
+  } finally {
+    closeToast()
+    reportToDelete.value = null
+  }
+}
+
 onMounted(() => {
   getReportList()
 })
@@ -340,8 +409,35 @@ onMounted(() => {
   margin-bottom: 16px;
 }
 
-.report-list {
+.report-list-wrapper {
+  height: calc(100vh - 300px);  /* 减去其他元素的高度 */
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 8px;
   margin-bottom: 16px;
+}
+
+.report-list {
+  padding: 8px 0;
+}
+
+/* 自定义滚动条样式 */
+.report-list-wrapper::-webkit-scrollbar {
+  width: 6px;
+}
+
+.report-list-wrapper::-webkit-scrollbar-track {
+  background: #f5f5f5;
+  border-radius: 3px;
+}
+
+.report-list-wrapper::-webkit-scrollbar-thumb {
+  background: #ddd;
+  border-radius: 3px;
+}
+
+.report-list-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #ccc;
 }
 
 .pagination-wrapper {
@@ -380,9 +476,14 @@ onMounted(() => {
   margin-right: 8px;
 }
 
-.view-btn {
+.view-btn,
+.delete-btn {
   font-size: 12px;
   padding: 0 12px;
+}
+
+.delete-btn {
+  margin-left: 8px;
 }
 
 .preview-dialog {
@@ -442,5 +543,17 @@ onMounted(() => {
   margin-right: 8px;
   display: flex;
   align-items: center;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.delete-confirm-content {
+  padding: 16px;
+  text-align: center;
+  color: #666;
 }
 </style> 
