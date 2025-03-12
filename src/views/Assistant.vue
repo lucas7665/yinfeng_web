@@ -63,7 +63,18 @@
                 :name="message.role === 'user' ? 'manager' : 'service'" 
                 class="avatar-icon"
               />
-              <div class="message-text">{{ message.content }}</div>
+              <div class="message-text">
+                <!-- 用户消息直接显示文本 -->
+                <template v-if="message.role === 'user'">
+                  {{ message.content }}
+                </template>
+                <!-- AI 回复使用 Markdown 渲染 -->
+                <div 
+                  v-else 
+                  class="markdown-content"
+                  v-html="renderMarkdown(message.content)"
+                ></div>
+              </div>
             </div>
           </div>
         </template>
@@ -114,6 +125,8 @@
 import { ref, onMounted, nextTick } from 'vue'
 import { showToast, showDialog } from 'vant'
 import axios from 'axios'
+import MarkdownIt from 'markdown-it'
+import hljs from 'highlight.js'
 
 const CHAT_ID = 'ff71490cf4b211efae140242ac130006'
 const showSidebar = ref(false)
@@ -123,6 +136,7 @@ const messages = ref([])
 const inputMessage = ref('')
 const isLoading = ref(false)
 const messageList = ref(null)
+const currentAnswer = ref(null)
 
 const currentSessionTitle = ref('健康助手')
 
@@ -230,7 +244,7 @@ const sendMessage = async () => {
   // 如果没有当前会话，先创建一个
   if (!currentSession.value) {
     await createNewSession()
-    if (!currentSession.value) return  // 如果创建失败就返回
+    if (!currentSession.value) return
   }
 
   const userMessage = inputMessage.value.trim()
@@ -249,11 +263,13 @@ const sendMessage = async () => {
     })
 
     if (res.data.code === 0) {
-      // 修改这里，从正确的路径获取答案
-      const answer = res.data.data.data.answer
+      // 保存完整的响应到 currentAnswer
+      currentAnswer.value = res.data
+      
+      // 添加消息到对话列表
       messages.value.push({
         role: 'assistant',
-        content: answer || '抱歉，我没有找到合适的答案'
+        content: res.data.data.data.answer || '抱歉，我没有找到合适的答案'
       })
     } else {
       showToast(res.data.message || '发送失败')
@@ -356,6 +372,29 @@ const deleteSession = async (session) => {
     console.error('删除会话失败:', error)
     showToast('删除失败')
   }
+}
+
+// 初始化 markdown-it
+const md = new MarkdownIt({
+  html: true,
+  linkify: true,
+  typographer: true,
+  highlight: function (str, lang) {
+    if (lang && hljs.getLanguage(lang)) {
+      try {
+        return hljs.highlight(str, { language: lang }).value
+      } catch (error) {
+        console.warn('代码高亮失败:', error)
+        return str
+      }
+    }
+    return str
+  }
+})
+
+// 渲染 Markdown 的函数
+const renderMarkdown = (content) => {
+  return content ? md.render(content) : ''
 }
 </script>
 
@@ -595,6 +634,89 @@ const deleteSession = async (session) => {
   .delete-icon {
     padding: 12px;
     margin-right: -12px;
+  }
+}
+
+/* Markdown 样式 */
+.markdown-content {
+  line-height: 1.6;
+}
+
+.markdown-content :deep(p) {
+  margin: 0;  /* 移除段落边距 */
+}
+
+.markdown-content :deep(ul),
+.markdown-content :deep(ol) {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+.markdown-content :deep(li) {
+  margin: 4px 0;
+}
+
+.markdown-content :deep(code) {
+  background: rgba(0, 0, 0, 0.06);
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 14px;
+}
+
+.markdown-content :deep(pre) {
+  background: #f5f7fa;
+  padding: 12px;
+  border-radius: 4px;
+  overflow-x: auto;
+  margin: 8px 0;
+}
+
+.markdown-content :deep(pre code) {
+  background: transparent;
+  padding: 0;
+}
+
+.markdown-content :deep(blockquote) {
+  border-left: 4px solid #ddd;
+  margin: 8px 0;
+  padding-left: 12px;
+  color: #666;
+}
+
+/* 确保用户消息中的文本颜色保持白色 */
+.user-message .markdown-content {
+  color: #fff;
+}
+
+.user-message .markdown-content :deep(code),
+.user-message .markdown-content :deep(pre) {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.user-message .markdown-content :deep(blockquote) {
+  border-left-color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* 暗色模式支持 */
+@media (prefers-color-scheme: dark) {
+  .markdown-content {
+    color: #e5e5e5;
+  }
+
+  .markdown-content :deep(strong) {
+    color: #fff;
+  }
+
+  .markdown-content :deep(code) {
+    background: #2d2d2d;
+    color: #d4d4d4;
+  }
+
+  .markdown-content :deep(blockquote) {
+    color: #aaa;
   }
 }
 </style> 
