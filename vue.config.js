@@ -7,5 +7,14 @@ module.exports = defineConfig({
     plugins: [
       DefineOptions()
     ]
+  },
+  devServer: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8082',
+        changeOrigin: true,
+        ws: false  // 禁用 WebSocket
+      }
+    }
   }
 })

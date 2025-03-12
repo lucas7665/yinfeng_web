@@ -146,7 +146,10 @@ const http = axios.create({
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json'
-  }
+  },
+  // 确保不会自动升级到 WebSocket
+  httpAgent: false,
+  httpsAgent: false
 })
 
 // 请求拦截器：添加 token
