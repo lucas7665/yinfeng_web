@@ -314,16 +314,19 @@ onMounted(() => {
 
 <style scoped>
 .profile-page {
-  min-height: 100vh;
-  background-color: #f7f8fa;
-  padding-bottom: 50px;
+  min-height: calc(100vh - 50px);
+  background-color: #f0f5ff;  /* 改为浅蓝色 */
+  padding: 12px;
 }
 
 .user-header {
-  background-color: #fff;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   padding: 24px 16px;
+  margin-bottom: 12px;
   display: flex;
-  justify-content: space-between;
+  justify-content: space-between;  /* 让编辑按钮靠右 */
   align-items: center;
 }
 
@@ -331,6 +334,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 16px;
+  flex: 1;  /* 添加这行，让用户信息占据剩余空间 */
 }
 
 .user-name {
@@ -339,8 +343,11 @@ onMounted(() => {
 }
 
 .info-section {
-  margin-top: 12px;
-  padding: 0 16px;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  padding: 16px;
+  margin-bottom: 12px;
 }
 
 .section-title {
@@ -360,7 +367,8 @@ onMounted(() => {
 }
 
 .edit-btn {
-  flex-shrink: 0;
+  flex-shrink: 0;  /* 确保按钮不会被压缩 */
+  margin-left: auto;  /* 添加这行，强制按钮靠右 */
 }
 
 .avatar {

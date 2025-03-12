@@ -463,11 +463,21 @@ onMounted(() => {
 
 <style scoped>
 .plan-page {
+  min-height: calc(100vh - 50px);
+  background-color: #f0f5ff;
   padding-bottom: 50px;
 }
 
+.content {
+  padding: 12px;
+}
+
 .plan-section {
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   padding: 16px;
+  margin-bottom: 12px;
 }
 
 .section-title {
@@ -557,10 +567,6 @@ onMounted(() => {
 .plan-content {
   white-space: pre-wrap;
   line-height: 1.6;
-}
-
-.content {
-  padding: 16px;
 }
 
 .empty-tip {

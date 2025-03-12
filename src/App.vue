@@ -19,5 +19,7 @@ const isLoginPage = computed(() => route.path === '/login')
   font-family: Avenir, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: #f0f5ff;
+  min-height: 100vh;
 }
 </style>

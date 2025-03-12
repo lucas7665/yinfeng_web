@@ -205,11 +205,16 @@ const onSubmit = async () => {
 <style scoped>
 .login-page {
   min-height: 100vh;
-  background-color: #f7f8fa;
+  background-color: #f0f5ff;
+  padding: 20px;
 }
 
 .login-form {
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   padding: 20px;
+  margin-top: 20px;
 }
 
 .submit-btn {

@@ -574,29 +574,32 @@ onMounted(() => {
 
 <style scoped>
 .report-page {
+  min-height: calc(100vh - 50px);
+  background-color: #f0f5ff;  /* 改为浅蓝色 */
   padding-bottom: 50px;
 }
 
 .content {
-  padding: 16px;
+  padding: 12px;
 }
 
-.upload-btn {
-  margin-bottom: 16px;
+.upload-btn,
+.generate-btn {
+  margin: 12px 0;
 }
 
 .report-list {
-  margin-bottom: 16px;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  padding: 16px;
+  margin: 12px 0;
 }
 
 .pagination-wrapper {
   display: flex;
   justify-content: center;
   margin: 16px 0;
-}
-
-.generate-btn {
-  margin-top: 16px;
 }
 
 .report-title {

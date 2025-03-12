@@ -403,9 +403,9 @@ const renderMarkdown = (content) => {
 
 <style scoped>
 .assistant-page {
-  height: calc(100vh - 50px);  /* 减去底部 TabBar 的高度 */
+  min-height: calc(100vh - 50px);
   display: flex;
-  background-color: #f7f8fa;
+  background-color: #f0f5ff;  /* 改为浅蓝色 */
 }
 
 .sidebar-overlay {
@@ -461,20 +461,26 @@ const renderMarkdown = (content) => {
 }
 
 .chat-main {
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin: 12px;
   flex: 1;
   display: flex;
   flex-direction: column;
-  min-width: 0;
-  margin-left: 0;  /* 移除默认的左边距 */
-  transition: margin-left 0.3s;
+  position: relative;  /* 添加相对定位 */
 }
 
 .chat-header {
+  position: sticky;  /* 改为粘性定位 */
+  top: 0;           /* 固定在顶部 */
   padding: 12px 16px;
   background-color: #fff;
   border-bottom: 1px solid #ebedf0;
   display: flex;
   align-items: center;
+  z-index: 11;      /* 确保在消息列表上层 */
+  border-radius: 8px 8px 0 0;  /* 保持顶部圆角 */
 }
 
 .menu-icon {
@@ -494,9 +500,13 @@ const renderMarkdown = (content) => {
 }
 
 .message-list {
+  background-color: #f5f8ff;
   flex: 1;
   overflow-y: auto;
   padding: 16px;
+  margin-bottom: 60px;
+  padding-bottom: 80px;
+  margin-top: 0;    /* 确保没有顶部间距 */
 }
 
 .message-item {
@@ -507,6 +517,7 @@ const renderMarkdown = (content) => {
   display: flex;
   align-items: flex-start;
   max-width: 80%;
+  margin-bottom: 16px;  /* 增加消息之间的间距 */
 }
 
 .user-message {
@@ -525,10 +536,11 @@ const renderMarkdown = (content) => {
 
 .message-text {
   background-color: #fff;
-  padding: 12px;
+  padding: 12px 16px;  /* 增加文字周围的内边距 */
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   word-break: break-word;
+  line-height: 1.6;  /* 增加行高 */
 }
 
 .user-message .message-text {
@@ -537,10 +549,15 @@ const renderMarkdown = (content) => {
 }
 
 .input-area {
-  padding: 12px;
+  position: fixed;
+  bottom: 50px;
+  left: 12px;
+  right: 12px;
+  padding: 12px 16px;  /* 增加左右内边距 */
   background-color: #fff;
-  border-top: 1px solid #ebedf0;
-  padding-bottom: calc(12px + env(safe-area-inset-bottom));  /* 适配 iPhone 底部安全区域 */
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.1);
+  z-index: 10;
 }
 
 .empty-message {
@@ -592,7 +609,14 @@ const renderMarkdown = (content) => {
   }
 
   .chat-main {
-    padding-bottom: env(safe-area-inset-bottom);  /* 适配 iPhone 底部安全区域 */
+    margin: 0;
+    border-radius: 0;
+  }
+
+  .input-area {
+    left: 0;
+    right: 0;
+    border-radius: 0;
   }
 }
 
@@ -721,5 +745,18 @@ const renderMarkdown = (content) => {
   .markdown-content :deep(blockquote) {
     color: #aaa;
   }
+}
+
+/* 适配 iPhone 底部安全区域 */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .input-area {
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+    bottom: calc(50px + env(safe-area-inset-bottom));
+  }
+}
+
+/* 确保最后一条消息不会被输入框遮挡 */
+.message-item:last-child {
+  margin-bottom: 0;
 }
 </style> 
