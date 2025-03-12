@@ -23,11 +23,10 @@
               </template>
               <template #right-icon>
                 <div class="cell-right">
-                  <van-tag :type="report.status === 1 ? 'success' : 'warning'" class="status-tag">
-                    {{ report.status === 1 ? '已上传' : '处理中' }}
+                  <van-tag :type="report.pdfGenerated === 1 ? 'success' : 'warning'" class="status-tag">
+                    {{ report.pdfGenerated === 1 ? '已生成' : '已上传' }}
                   </van-tag>
                   <van-button 
-                    v-if="report.status === 1" 
                     type="primary" 
                     size="small" 
                     @click.stop="viewFile(report)"
@@ -95,11 +94,10 @@
               </template>
               <template #right-icon>
                 <div class="cell-right">
-                  <van-tag :type="report.status === 1 ? 'success' : 'warning'" class="status-tag">
-                    {{ report.status === 1 ? '已上传' : '处理中' }}
+                  <van-tag :type="report.pdfGenerated === 1 ? 'success' : 'warning'" class="status-tag">
+                    {{ report.pdfGenerated === 1 ? '已生成' : '已上传' }}
                   </van-tag>
                   <van-button 
-                    v-if="report.status === 1" 
                     type="primary" 
                     size="small" 
                     @click.stop="viewFile(report)"
