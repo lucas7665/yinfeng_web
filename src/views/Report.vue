@@ -74,7 +74,76 @@
         </div>
       </van-tab>
       <van-tab title="他人报告" name="others">
-        <div class="empty-tip">暂无他人报告</div>
+        <div class="content">
+          <van-button type="primary" block @click="handleUpload" class="upload-btn">
+            上传报告
+          </van-button>
+
+          <!-- 报告列表 -->
+          <div class="report-list">
+            <van-cell v-for="report in otherReports" :key="report.id">
+              <template #icon>
+                <van-radio 
+                  :name="report.id" 
+                  v-model="otherSelectedReportId"
+                  class="report-radio"
+                />
+              </template>
+              <template #title>
+                <div class="report-title">{{ report.fileName }}</div>
+                <div class="report-time">{{ formatDate(report.uploadTime) }}</div>
+              </template>
+              <template #right-icon>
+                <div class="cell-right">
+                  <van-tag :type="report.status === 1 ? 'success' : 'warning'" class="status-tag">
+                    {{ report.status === 1 ? '已上传' : '处理中' }}
+                  </van-tag>
+                  <van-button 
+                    v-if="report.status === 1" 
+                    type="primary" 
+                    size="small" 
+                    @click.stop="viewFile(report)"
+                    class="view-btn"
+                  >
+                    查看
+                  </van-button>
+                  <van-button 
+                    type="danger" 
+                    size="small" 
+                    @click.stop="handleDelete(report)"
+                    class="delete-btn"
+                  >
+                    删除
+                  </van-button>
+                </div>
+              </template>
+            </van-cell>
+          </div>
+
+          <!-- 分页器 -->
+          <div class="pagination-wrapper">
+            <van-empty v-if="!otherLoading && !otherReports.length" description="暂无报告" />
+            <van-pagination
+              v-else
+              v-model="otherPage"
+              :total-items="otherTotal"
+              :items-per-page="otherPageSize"
+              :show-page-size="3"
+              force-ellipses
+              @change="onOtherPageChange"
+            />
+          </div>
+
+          <van-button 
+            type="info" 
+            block 
+            @click="generateOtherPDF" 
+            class="generate-btn"
+            :disabled="!otherSelectedReportId"
+          >
+            生成PDF报告
+          </van-button>
+        </div>
       </van-tab>
     </van-tabs>
 
@@ -129,7 +198,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { showToast, showLoadingToast, closeToast } from 'vant'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
@@ -153,6 +222,14 @@ const selectedReportId = ref(null)
 // 删除相关
 const showDeleteDialog = ref(false)
 const reportToDelete = ref(null)
+
+// 他人报告相关变量
+const otherReports = ref([])
+const otherLoading = ref(false)
+const otherPage = ref(1)
+const otherPageSize = 10
+const otherTotal = ref(0)
+const otherSelectedReportId = ref(null)
 
 // 创建 axios 实例
 const http = axios.create({
@@ -185,7 +262,8 @@ const getReportList = async () => {
     const res = await http.get(`/api/v1/reports`, {
       params: {
         page: currentPage.value,
-        size: pageSize
+        size: pageSize,
+        planType: 1  // 添加 planType=1 表示我的报告
       }
     })
     
@@ -389,8 +467,110 @@ const confirmDelete = async () => {
   }
 }
 
+// 获取他人报告列表
+const getOtherReports = async () => {
+  if (otherLoading.value) return
+  
+  try {
+    otherLoading.value = true
+    showLoadingToast({
+      message: '加载中...',
+      forbidClick: true,
+    })
+
+    const res = await http.get(`/api/v1/reports`, {
+      params: {
+        page: otherPage.value,
+        size: otherPageSize,
+        planType: 2
+      }
+    })
+    
+    if (res.data.code === 0) {
+      otherReports.value = res.data.data || []
+      otherTotal.value = res.data.total || 0
+    } else {
+      showToast(res.data.message || '获取列表失败')
+    }
+  } catch (error) {
+    console.error('获取他人报告列表失败:', error)
+    showToast('获取列表失败')
+  } finally {
+    otherLoading.value = false
+    closeToast()
+  }
+}
+
+// 他人报告分页切换
+const onOtherPageChange = (page) => {
+  otherPage.value = page
+  otherSelectedReportId.value = null  // 清除选择
+  getOtherReports()
+}
+
+// 生成他人报告PDF
+const generateOtherPDF = async () => {
+  if (!otherSelectedReportId.value) {
+    showToast('请先选择一份报告')
+    return
+  }
+
+  const selectedReport = otherReports.value.find(report => report.id === otherSelectedReportId.value)
+  if (!selectedReport) {
+    showToast('所选报告不存在')
+    return
+  }
+
+  try {
+    showLoadingToast({
+      message: '生成中...',
+      forbidClick: true,
+      duration: 0
+    })
+
+    const params = new URLSearchParams()
+    params.append('reportId', selectedReport.id)
+    params.append('reportUrl', selectedReport.fileUrl)
+    params.append('planType', '2')  // 他人报告
+
+    const res = await http.post('/api/health-plan/generatepdf', params, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      timeout: 120000
+    })
+    
+    if (res.data.code === 0) {
+      showToast('PDF生成成功')
+    } else {
+      showToast(res.data.message || 'PDF生成失败')
+    }
+  } catch (error) {
+    console.error('生成PDF失败:', error)
+    showToast('PDF生成失败')
+  } finally {
+    closeToast()
+  }
+}
+
+// 监听标签页切换
+watch(activeTab, (newVal) => {
+  if (newVal === 'others') {
+    // 切换到他人报告标签页时，如果还没有数据就加载数据
+    if (otherReports.value.length === 0) {
+      getOtherReports()
+    }
+  }
+})
+
+// 修改初始化加载
 onMounted(() => {
-  getReportList()
+  // 根据当前标签页加载对应数据
+  if (activeTab.value === 'my') {
+    getReportList()
+  } else if (activeTab.value === 'others') {
+    getOtherReports()
+  }
 })
 </script>
 
@@ -526,5 +706,13 @@ onMounted(() => {
   padding: 16px;
   text-align: center;
   color: #666;
+}
+
+.search-bar {
+  padding: 16px;
+}
+
+.report-icon {
+  margin-left: 8px;
 }
 </style> 
