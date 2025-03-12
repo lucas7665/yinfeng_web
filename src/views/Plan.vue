@@ -57,7 +57,59 @@
         </div>
       </van-tab>
       <van-tab title="他人方案" name="others">
-        <div class="empty-tip">暂无他人方案</div>
+        <div class="content">
+          <!-- 健康方案列表 -->
+          <div class="plan-section">
+            <van-empty v-if="!otherLoading && !otherPlans.length" description="暂无健康方案" />
+            <template v-else>
+              <van-cell-group inset>
+                <van-cell v-for="(plan, index) in otherPlans" :key="plan.id">
+                  <template #title>
+                    <div class="plan-title">
+                      第{{ getOtherDisplayIndex(index) }}次健康方案
+                    </div>
+                  </template>
+                  <template #label>
+                    <div class="plan-info">
+                      <span class="plan-time">生成时间：{{ formatDate(plan.createTime) }}</span>
+                    </div>
+                  </template>
+                  <template #right-icon>
+                    <div class="action-buttons">
+                      <van-button 
+                        type="primary" 
+                        size="small" 
+                        @click="viewPlan(plan, index)"
+                        class="view-btn"
+                      >
+                        查看
+                      </van-button>
+                      <van-button 
+                        type="danger" 
+                        size="small" 
+                        @click="handleDelete(plan)"
+                        class="delete-btn"
+                      >
+                        删除
+                      </van-button>
+                    </div>
+                  </template>
+                </van-cell>
+              </van-cell-group>
+              <!-- 分页器 -->
+              <div class="pagination-wrapper">
+                <van-pagination
+                  v-model="otherPage"
+                  :total-items="otherTotal"
+                  :items-per-page="otherPageSize"
+                  :show-page-size="3"
+                  force-ellipses
+                  @change="onOtherPageChange"
+                />
+              </div>
+            </template>
+          </div>
+        </div>
       </van-tab>
     </van-tabs>
 
@@ -96,6 +148,15 @@
         确定要删除这份健康方案吗？此操作不可恢复。
       </div>
     </van-dialog>
+
+    <!-- 方案详情弹窗 -->
+    <van-dialog
+      v-model:show="showDetail"
+      title="方案详情"
+      class="plan-dialog"
+    >
+      <!-- ... 现有的方案详情内容 ... -->
+    </van-dialog>
   </div>
 </template>
 
@@ -118,9 +179,19 @@ const showPreview = ref(false)
 const currentPlan = ref(null)
 const previewTitle = ref('')
 
+// 详情弹窗相关
+const showDetail = ref(false)
+
 // 删除相关
 const showDeleteDialog = ref(false)
 const planToDelete = ref(null)
+
+// 他人方案相关变量
+const otherPlans = ref([])
+const otherLoading = ref(false)
+const otherPage = ref(1)
+const otherPageSize = 10
+const otherTotal = ref(0)
 
 // 创建 axios 实例
 const http = axios.create({
@@ -155,8 +226,7 @@ const getPlanList = async () => {
       params: {
         page: currentPage.value,
         size: pageSize,
-        planType: 1,
-        isOwn: activeTab.value === 'my' ? 1 : 0  // 根据 tab 区分是否查询自己的方案
+        planType: 1  // 我的方案
       }
     })
     
@@ -181,6 +251,46 @@ const getPlanList = async () => {
   }
 }
 
+// 获取他人方案列表
+const getOtherPlans = async () => {
+  if (otherLoading.value) return
+  
+  try {
+    otherLoading.value = true
+    showLoadingToast({
+      message: '加载中...',
+      forbidClick: true,
+    })
+
+    const res = await http.get('/api/health-plan/list', {
+      params: {
+        page: otherPage.value,
+        size: otherPageSize,
+        planType: 2  // 他人方案
+      }
+    })
+    
+    if (res.data.code === 0) {
+      otherPlans.value = res.data.data || []
+      otherTotal.value = res.data.total || 0
+    } else {
+      showToast(res.data.message || '获取列表失败')
+    }
+  } catch (error) {
+    console.error('获取他人方案列表失败:', error)
+    if (error.response?.status === 403) {
+      showToast('登录已过期，请重新登录')
+      localStorage.removeItem('token')
+      router.push('/login')
+    } else {
+      showToast('获取列表失败')
+    }
+  } finally {
+    otherLoading.value = false
+    closeToast()
+  }
+}
+
 // 监听 tab 切换
 watch(activeTab, () => {
   currentPage.value = 1  // 切换 tab 时重置页码
@@ -198,16 +308,68 @@ const getDisplayIndex = (index) => {
   return (currentPage.value - 1) * pageSize + index + 1
 }
 
-// 查看方案
+// 获取他人方案显示序号（考虑分页）
+const getOtherDisplayIndex = (index) => {
+  return (otherPage.value - 1) * otherPageSize + index + 1
+}
+
+// 修改查看方案方法
 const viewPlan = (plan, index) => {
   currentPlan.value = plan
-  previewTitle.value = `第${getDisplayIndex(index)}次健康方案`
+  const isOtherPlan = plan.planType === 2
+  previewTitle.value = isOtherPlan 
+    ? `第${getOtherDisplayIndex(index)}次健康方案`
+    : `第${getDisplayIndex(index)}次健康方案`
+  
+  // 如果有 PDF 链接，直接显示 PDF
+  if (plan.pdfUrl) {
+    currentPlan.value = {
+      ...plan,
+      content: null,
+      pdfUrl: plan.pdfUrl
+    }
+  } else {
+    // 否则显示文本内容
+    currentPlan.value = {
+      ...plan,
+      content: `
+基本信息：
+${plan.basicInfo || '无'}
+
+鸡尾酒疗法：
+${plan.cocktailTherapy || '无'}
+
+抗衰老疗法：
+${plan.antiAging || '无'}
+
+口服营养：
+${plan.oralNutrition || '无'}
+
+生活方式指导：
+${plan.lifestyleGuide || '无'}
+
+心灵疗愈：
+${plan.mentalHealing || '无'}
+
+设备干预：
+${plan.equipmentIntervention || '无'}
+
+总结：
+${plan.summary || '无'}
+      `.trim()
+    }
+  }
+  
   showPreview.value = true
 }
 
 // 格式化日期
 const formatDate = (date) => {
-  return new Date(date).toLocaleDateString()
+  return new Date(date).toLocaleDateString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  })
 }
 
 // 拖拽调整大小相关
@@ -275,8 +437,27 @@ const confirmDelete = async () => {
   }
 }
 
+// 他人方案分页切换
+const onOtherPageChange = (page) => {
+  otherPage.value = page
+  getOtherPlans()
+}
+
+// 监听标签页切换
+watch(activeTab, (newVal) => {
+  if (newVal === 'others') {
+    if (otherPlans.value.length === 0) {
+      getOtherPlans()
+    }
+  }
+})
+
 onMounted(() => {
-  getPlanList()
+  if (activeTab.value === 'my') {
+    getPlanList()
+  } else if (activeTab.value === 'others') {
+    getOtherPlans()
+  }
 })
 </script>
 
@@ -302,8 +483,9 @@ onMounted(() => {
 }
 
 .plan-info {
-  font-size: 12px;
-  color: #999;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-top: 4px;
 }
 
@@ -397,5 +579,19 @@ onMounted(() => {
   padding: 16px;
   text-align: center;
   color: #666;
+}
+
+.plan-dialog {
+  width: 95%;
+  height: 90vh;
+  max-width: 1200px;
+  resize: vertical;
+  overflow: hidden;
+}
+
+.plan-dialog :deep(.van-dialog__content) {
+  height: calc(100% - 56px);
+  padding: 0;
+  position: relative;
 }
 </style> 
