@@ -15,7 +15,7 @@ module.exports = defineConfig({
   devServer: {
     proxy: {
       '/api': {
-        target: 'http://localhost:8082',
+        target: 'https://lgj-8082.colorstoneai.com',
         changeOrigin: true,
         ws: false  // 禁用 WebSocket
       }

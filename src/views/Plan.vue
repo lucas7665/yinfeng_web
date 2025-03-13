@@ -195,7 +195,7 @@ const otherTotal = ref(0)
 
 // 创建 axios 实例
 const http = axios.create({
-  baseURL: 'http://localhost:8082',
+  baseURL: 'https://lgj-8082.colorstoneai.com',
   timeout: 60000,
   headers: {
     'Content-Type': 'application/json'
