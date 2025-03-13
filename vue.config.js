@@ -17,7 +17,8 @@ module.exports = defineConfig({
       '/api': {
         target: 'https://lgj-8082.colorstoneai.com',
         changeOrigin: true,
-        ws: false  // 禁用 WebSocket
+        ws: false,
+        secure: false
       }
     }
   }

@@ -1,11 +1,10 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Report from '../views/Report.vue'
 import Login from '../views/Login.vue'
 
 const routes = [
   {
     path: '/',
-    redirect: '/report'
+    redirect: '/login'
   },
   {
     path: '/login',
@@ -15,7 +14,7 @@ const routes = [
   {
     path: '/report',
     name: 'Report',
-    component: Report,
+    component: () => import('../views/Report.vue'),
     meta: { requiresAuth: true }  // 需要登录才能访问
   },
   {
@@ -32,6 +31,11 @@ const routes = [
     path: '/profile',
     name: 'Profile',
     component: () => import('../views/Profile.vue')
+  },
+  {
+    path: '/api/auth/wechat/callback',
+    name: 'WxCallback',
+    component: () => import('../views/WxCallback.vue')
   }
 ]
 

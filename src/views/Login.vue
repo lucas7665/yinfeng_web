@@ -70,6 +70,24 @@
           </van-form>
         </van-tab>
       </van-tabs>
+
+      <!-- 添加微信登录按钮 -->
+      <div class="other-login">
+        <div class="divider">
+          <span>其他登录方式</span>
+        </div>
+        <div class="social-login">
+          <van-button 
+            round 
+            icon="wechat" 
+            color="#07c160" 
+            class="wechat-btn"
+            @click="handleWxLogin"
+          >
+            微信登录
+          </van-button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -200,6 +218,31 @@ const onSubmit = async () => {
     closeToast()
   }
 }
+
+// 微信登录处理
+const handleWxLogin = async () => {
+  try {
+    showLoadingToast({
+      message: '正在跳转...',
+      forbidClick: true,
+    })
+
+    // 获取微信授权URL
+    const res = await http.get('/api/auth/wechat/auth-url')
+    
+    if (res.data.code === 200) {
+      // 跳转到微信授权页面
+      window.location.href = res.data.data
+    } else {
+      showToast('获取微信登录链接失败')
+    }
+  } catch (error) {
+    console.error('微信登录失败:', error)
+    showToast('微信登录失败，请重试')
+  } finally {
+    closeToast()
+  }
+}
 </script>
 
 <style scoped>
@@ -219,5 +262,38 @@ const onSubmit = async () => {
 
 .submit-btn {
   margin: 16px;
+}
+
+.other-login {
+  margin-top: 24px;
+  padding: 0 16px;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  color: #999;
+  font-size: 14px;
+  margin: 16px 0;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #ebedf0;
+  margin: 0 16px;
+}
+
+.social-login {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.wechat-btn {
+  width: 80%;
+  height: 44px;
 }
 </style> 
