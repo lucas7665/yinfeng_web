@@ -127,6 +127,9 @@ import { showToast, showDialog } from 'vant'
 import axios from 'axios'
 import MarkdownIt from 'markdown-it'
 import hljs from 'highlight.js'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 const CHAT_ID = 'ff71490cf4b211efae140242ac130006'
 const showSidebar = ref(false)
@@ -264,6 +267,14 @@ const sendMessage = async () => {
       session_id: currentSession.value,
       question: userMessage
     })
+
+    // 添加对 402 状态的处理
+    if (res.data.code === 402) {
+      showToast(res.data.data.message || '免费对话次数已用完，请升级会员继续使用')
+      await router.push('/payment')
+      isLoading.value = false
+      return
+    }
 
     if (res.data.code === 0) {
       // 保存完整的响应到 currentAnswer

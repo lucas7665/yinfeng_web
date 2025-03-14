@@ -33,6 +33,11 @@ const routes = [
     component: () => import('../views/Profile.vue')
   },
   {
+    path: '/payment',
+    name: 'Payment',
+    component: () => import('../views/Payment.vue')
+  },
+  {
     path: '/api/auth/wechat/callback',
     name: 'WxCallback',
     component: () => import('../views/WxCallback.vue')

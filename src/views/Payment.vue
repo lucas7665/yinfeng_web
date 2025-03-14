@@ -1,23 +1,26 @@
 <template>
   <div class="payment-container">
     <div class="payment-card">
-      <h2>升级会员</h2>
-      <div class="price-info">
-        <div class="price">¥99.00</div>
-        <div class="price-description">永久会员，无限对话</div>
+      <h1>升级会员</h1>
+      
+      <div class="price-section">
+        <h2>¥99.00</h2>
+        <p>每月</p>
       </div>
-      <div class="benefits">
-        <h3>会员特权</h3>
+
+      <div class="benefits-section">
+        <h3>会员权益</h3>
         <ul>
-          <li>无限次数的AI对话</li>
-          <li>优先响应服务</li>
-          <li>专属客服支持</li>
-          <li>更多功能持续更新</li>
+          <li>每月500条对话额度</li>
+          <li>优先客服支持</li>
+          <li>高级AI模型使用权限</li>
+          <li>自定义知识库</li>
         </ul>
       </div>
-      <div class="payment-button">
-        <button @click="handlePayment" class="pay-btn">立即开通</button>
-      </div>
+
+      <button class="payment-button" @click="handlePayment">
+        立即开通
+      </button>
     </div>
   </div>
 </template>
@@ -27,8 +30,8 @@ export default {
   name: 'Payment',
   methods: {
     handlePayment() {
-      // TODO: 实现微信支付逻辑
-      this.$message.info('支付功能开发中，敬请期待！');
+      // TODO: 实现支付逻辑
+      alert('支付功能开发中...')
     }
   }
 }
@@ -47,78 +50,75 @@ export default {
 .payment-card {
   background: white;
   border-radius: 12px;
-  padding: 30px;
-  width: 100%;
-  max-width: 400px;
+  padding: 40px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  max-width: 400px;
+  width: 100%;
 }
 
-h2 {
+h1 {
   text-align: center;
   color: #333;
   margin-bottom: 30px;
 }
 
-.price-info {
+.price-section {
   text-align: center;
   margin-bottom: 30px;
 }
 
-.price {
+.price-section h2 {
   font-size: 36px;
-  color: #f60;
-  font-weight: bold;
+  color: #2c3e50;
+  margin: 0;
 }
 
-.price-description {
+.price-section p {
   color: #666;
-  margin-top: 10px;
+  margin: 5px 0 0;
 }
 
-.benefits {
+.benefits-section {
   margin-bottom: 30px;
 }
 
-.benefits h3 {
+.benefits-section h3 {
   color: #333;
   margin-bottom: 15px;
 }
 
-.benefits ul {
+.benefits-section ul {
   list-style: none;
   padding: 0;
 }
 
-.benefits li {
+.benefits-section li {
   padding: 10px 0;
   color: #666;
   position: relative;
-  padding-left: 20px;
+  padding-left: 25px;
 }
 
-.benefits li:before {
+.benefits-section li:before {
   content: "✓";
-  color: #4CAF50;
   position: absolute;
   left: 0;
+  color: #42b983;
 }
 
 .payment-button {
-  text-align: center;
-}
-
-.pay-btn {
-  background: #4CAF50;
+  width: 100%;
+  padding: 15px;
+  background-color: #42b983;
   color: white;
   border: none;
-  padding: 12px 40px;
-  border-radius: 25px;
+  border-radius: 6px;
   font-size: 16px;
   cursor: pointer;
   transition: background-color 0.3s;
 }
 
-.pay-btn:hover {
-  background: #45a049;
+.payment-button:hover {
+  background-color: #3aa876;
 }
 </style> 
