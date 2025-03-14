@@ -8,10 +8,9 @@ module.exports = defineConfig({
       DefineOptions()
     ]
   },
-  // 修改输出目录到后端项目的静态资源目录
-  outputDir: '/Users/mac/dkt_project/yinfeng/src/main/resources/static',
-  // 修改静态资源路径
-  publicPath: '/',
+  // 根据环境变量决定输出目录和publicPath
+  outputDir: process.env.VUE_APP_OUTPUT_DIR || '/Users/mac/dkt_project/yinfeng/src/main/resources/static',
+  publicPath: process.env.VUE_APP_PUBLIC_PATH || '/',
   devServer: {
     proxy: {
       '/api': {
@@ -21,5 +20,6 @@ module.exports = defineConfig({
         secure: false
       }
     }
-  }
+  },
+  lintOnSave: false  // 暂时关闭保存时的 lint 检查
 })

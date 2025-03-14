@@ -5,6 +5,7 @@
   "scripts": {
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
+    "build:wx": "vue-cli-service build --mode wx",
     "lint": "vue-cli-service lint"
   },
   "dependencies": {
@@ -34,9 +35,6 @@
     ],
     "parserOptions": {
       "parser": "@babel/eslint-parser"
-    },
-    "rules": {
-      "vue/multi-word-component-names": "off"
     }
   },
   "browserslist": [

@@ -18,23 +18,142 @@
         </ul>
       </div>
 
-      <button class="payment-button" @click="handlePayment">
-        立即开通
+      <button class="payment-button" @click="handlePayment" :disabled="loading">
+        {{ loading ? '处理中...' : '立即开通' }}
       </button>
     </div>
   </div>
 </template>
 
-<script>
-export default {
-  name: 'Payment',
-  methods: {
-    handlePayment() {
-      // TODO: 实现支付逻辑
-      alert('支付功能开发中...')
+<script setup>
+import { ref, onMounted } from 'vue'
+import { showToast } from 'vant'
+import { useRouter } from 'vue-router'
+import axios from 'axios'
+
+const router = useRouter()
+const loading = ref(false)
+
+// 创建 axios 实例
+const http = axios.create({
+  baseURL: 'https://lgj-8082.colorstoneai.com',
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+})
+
+// 请求拦截器：添加 token
+http.interceptors.request.use(config => {
+  const token = localStorage.getItem('token')
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
+
+// 检查是否在微信浏览器中
+const isWeixinBrowser = () => {
+  const ua = navigator.userAgent.toLowerCase()
+  return ua.indexOf('micromessenger') !== -1
+}
+
+// 初始化微信配置
+const initWxConfig = async () => {
+  try {
+    // 获取当前页面URL（去除hash部分）
+    const url = window.location.href.split('#')[0]
+    
+    // 获取JSAPI配置
+    const res = await http.get('/api/auth/wechat/jsapi-config', {
+      params: { url }
+    })
+    
+    if (res.data.code === 0) {
+      const config = res.data.data
+      // eslint-disable-next-line no-undef
+      wx.config({
+        debug: false,
+        appId: config.appId,
+        timestamp: config.timestamp,
+        nonceStr: config.nonceStr,
+        signature: config.signature,
+        jsApiList: ['chooseWXPay']
+      })
+
+      // eslint-disable-next-line no-undef
+      wx.ready(() => {
+        console.log('微信配置成功')
+      })
+
+      // eslint-disable-next-line no-undef
+      wx.error((err) => {
+        console.error('微信配置失败:', err)
+        showToast('微信配置失败，请刷新页面重试')
+      })
     }
+  } catch (error) {
+    console.error('初始化微信配置失败:', error)
+    showToast('初始化失败，请刷新页面重试')
   }
 }
+
+// 处理支付
+const handlePayment = async () => {
+  if (loading.value) return
+  
+  if (!isWeixinBrowser()) {
+    showToast('请在微信浏览器中打开')
+    return
+  }
+  
+  loading.value = true
+
+  try {
+    // 创建JSAPI支付订单
+    const res = await http.post('/api/auth/wechat/payment/jsapi')
+    
+    if (res.data.code === 0) {
+      const payParams = res.data.data
+      
+      // 调起微信支付
+      // eslint-disable-next-line no-undef
+      wx.chooseWXPay({
+        timestamp: payParams.timeStamp,
+        nonceStr: payParams.nonceStr,
+        package: payParams.package,
+        signType: payParams.signType,
+        paySign: payParams.paySign,
+        success: function() {
+          showToast('支付成功')
+          // 支付成功后跳转到助手页面
+          router.push('/assistant')
+        },
+        fail: function(err) {
+          console.error('支付失败:', err)
+          showToast('支付失败，请重试')
+        },
+        cancel: function() {
+          showToast('已取消支付')
+        }
+      })
+    } else {
+      showToast(res.data.message || '创建支付订单失败')
+    }
+  } catch (error) {
+    console.error('支付失败:', error)
+    showToast('支付失败，请稍后重试')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 组件挂载时初始化微信配置
+onMounted(() => {
+  if (isWeixinBrowser()) {
+    initWxConfig()
+  }
+})
 </script>
 
 <style scoped>
@@ -120,5 +239,10 @@ h1 {
 
 .payment-button:hover {
   background-color: #3aa876;
+}
+
+.payment-button:disabled {
+  background-color: #a8d5c3;
+  cursor: not-allowed;
 }
 </style> 
