@@ -25,6 +25,7 @@ module.exports = {
     'vue/multi-word-component-names': 'off'
   },
   globals: {
-    wx: true  // 添加全局 wx 对象
+    wx: true,  // 添加全局 wx 对象
+    WeixinJSBridge: true  // 添加全局 WeixinJSBridge 对象
   }
 }

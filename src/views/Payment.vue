@@ -1,7 +1,7 @@
 <template>
   <div class="payment-container">
     <div class="payment-card">
-      <h1>升级会员</h1>
+      <h1>升级会员2</h1>
       
       <div class="price-section">
         <h2>¥99.00</h2>
@@ -58,43 +58,89 @@ const isWeixinBrowser = () => {
   return ua.indexOf('micromessenger') !== -1
 }
 
-// 初始化微信配置
-const initWxConfig = async () => {
-  try {
-    // 获取当前页面URL（去除hash部分）
-    const url = window.location.href.split('#')[0]
-    
-    // 获取JSAPI配置
-    const res = await http.get('/api/auth/wechat/jsapi-config', {
-      params: { url }
-    })
-    
-    if (res.data.code === 0) {
-      const config = res.data.data
-      // eslint-disable-next-line no-undef
-      wx.config({
-        debug: false,
-        appId: config.appId,
-        timestamp: config.timestamp,
-        nonceStr: config.nonceStr,
-        signature: config.signature,
-        jsApiList: ['chooseWXPay']
+// 组件挂载时初始化微信配置
+onMounted(async () => {
+  if (isWeixinBrowser()) {
+    try {
+      console.log('开始初始化微信配置...')
+      // 获取当前页面URL（去除hash部分）
+      const url = window.location.href.split('#')[0]
+      console.log('当前页面URL:', url)
+      
+      // 获取JSAPI配置
+      const res = await http.get('/api/auth/wechat/jsapi-config', {
+        params: { url }
       })
+      
+      console.log('JSAPI配置响应:', res.data)
+      
+      if (res.data.code === 0) {
+        const config = res.data.data
+        console.log('准备配置微信JSSDK:', config)
+        
+        // eslint-disable-next-line no-undef
+        wx.config({
+          debug: true, // 开启调试模式
+          appId: config.appId,
+          timestamp: config.timestamp,
+          nonceStr: config.nonceStr,
+          signature: config.signature,
+          jsApiList: [
+            'checkJsApi',
+            'chooseWXPay',
+            'updateAppMessageShareData',
+            'updateTimelineShareData'
+          ]
+        })
 
-      // eslint-disable-next-line no-undef
-      wx.ready(() => {
-        console.log('微信配置成功')
-      })
+        // eslint-disable-next-line no-undef
+        wx.ready(() => {
+          console.log('微信配置成功，开始检查API是否可用')
+          // eslint-disable-next-line no-undef
+          wx.checkJsApi({
+            jsApiList: ['chooseWXPay'],
+            success: function(res) {
+              console.log('API检查结果:', res)
+            }
+          })
+        })
 
-      // eslint-disable-next-line no-undef
-      wx.error((err) => {
-        console.error('微信配置失败:', err)
-        showToast('微信配置失败，请刷新页面重试')
-      })
+        // eslint-disable-next-line no-undef
+        wx.error((err) => {
+          console.error('微信配置失败:', err)
+          showToast('微信配置失败，请刷新页面重试')
+        })
+      }
+    } catch (error) {
+      console.error('初始化微信配置失败:', error)
+      showToast('初始化失败，请刷新页面重试')
     }
-  } catch (error) {
-    console.error('初始化微信配置失败:', error)
-    showToast('初始化失败，请刷新页面重试')
+  } else {
+    console.log('非微信浏览器环境')
+  }
+})
+
+// 定义 WeixinJSBridge 支付函数
+const onBridgeReady = (params, orderNo) => {
+  return () => {
+    WeixinJSBridge.invoke(
+      'getBrandWCPayRequest', 
+      params,
+      function(res) {
+        if (res.err_msg === "get_brand_wcpay_request:ok") {
+          console.log('支付成功响应:', res)
+          showToast('支付成功')
+          // 开始轮询支付结果
+          checkPaymentStatus(orderNo)
+        } else if (res.err_msg === "get_brand_wcpay_request:cancel") {
+          console.log('用户取消支付')
+          showToast('已取消支付')
+        } else {
+          console.error('支付失败:', res)
+          showToast('支付失败，请重试')
+        }
+      }
+    )
   }
 }
 
@@ -108,52 +154,100 @@ const handlePayment = async () => {
   }
   
   loading.value = true
+  let orderNo = ''
 
   try {
+    console.log('开始创建支付订单...')
+    const token = localStorage.getItem('token')
+    const auth = localStorage.getItem('Authorization')
+    console.log('当前认证信息:', { token, auth })
+
     // 创建JSAPI支付订单
-    const res = await http.post('/api/auth/wechat/payment/jsapi')
+    const res = await http.post('/api/auth/wechat/payment/jsapi', null, {
+      headers: {
+        'Authorization': localStorage.getItem('Authorization')
+      }
+    })
     
-    if (res.data.code === 0) {
+    console.log('支付订单创建响应:', res.data)
+    
+    if (res.data.code === 200) {
       const payParams = res.data.data
+      orderNo = payParams.orderNo
+      console.log('获取到支付参数:', payParams)
       
-      // 调起微信支付
-      // eslint-disable-next-line no-undef
-      wx.chooseWXPay({
-        timestamp: payParams.timeStamp,
+      // 转换时间戳格式
+      const params = {
+        timeStamp: payParams.timeStamp, // 注意这里使用 timeStamp
         nonceStr: payParams.nonceStr,
         package: payParams.package,
         signType: payParams.signType,
         paySign: payParams.paySign,
-        success: function() {
-          showToast('支付成功')
-          // 支付成功后跳转到助手页面
-          router.push('/assistant')
-        },
-        fail: function(err) {
-          console.error('支付失败:', err)
-          showToast('支付失败，请重试')
-        },
-        cancel: function() {
-          showToast('已取消支付')
+        appId: payParams.appId
+      }
+      
+      console.log('准备调起支付:', params)
+      
+      // 使用 WeixinJSBridge 调起支付
+      if (typeof WeixinJSBridge === 'undefined') {
+        if (document.addEventListener) {
+          document.addEventListener('WeixinJSBridgeReady', onBridgeReady(params, orderNo), false)
+        } else if (document.attachEvent) {
+          document.attachEvent('WeixinJSBridgeReady', onBridgeReady(params, orderNo))
+          document.attachEvent('onWeixinJSBridgeReady', onBridgeReady(params, orderNo))
         }
-      })
+      } else {
+        onBridgeReady(params, orderNo)()
+      }
     } else {
       showToast(res.data.message || '创建支付订单失败')
     }
   } catch (error) {
-    console.error('支付失败:', error)
+    console.error('支付处理失败:', error)
     showToast('支付失败，请稍后重试')
   } finally {
     loading.value = false
   }
 }
 
-// 组件挂载时初始化微信配置
-onMounted(() => {
-  if (isWeixinBrowser()) {
-    initWxConfig()
+// 检查支付状态
+const checkPaymentStatus = async (orderNo) => {
+  let retryCount = 0
+  const maxRetries = 10
+  const interval = 1000 // 1秒
+
+  const check = async () => {
+    try {
+      console.log(`开始第${retryCount + 1}次查询支付结果 - orderNo:`, orderNo)
+      const res = await http.get(`/api/auth/wechat/payment/query/${orderNo}`)
+      console.log('支付状态查询结果:', res.data)
+
+      if (res.data.code === 0) {
+        const { orderStatus } = res.data.data
+        console.log('订单状态:', orderStatus)
+        
+        if (orderStatus === 'SUCCESS') {
+          showToast('支付成功')
+          router.push('/report')
+          return
+        }
+      }
+
+      if (retryCount < maxRetries) {
+        retryCount++
+        console.log(`等待${interval}ms后进行第${retryCount + 1}次查询`)
+        setTimeout(check, interval)
+      } else {
+        console.log('支付状态查询超时')
+        showToast('支付结果确认中，请稍后查看订单')
+      }
+    } catch (error) {
+      console.error('查询支付状态失败:', error)
+    }
   }
-})
+
+  check()
+}
 </script>
 
 <style scoped>
@@ -245,4 +339,4 @@ h1 {
   background-color: #a8d5c3;
   cursor: not-allowed;
 }
-</style> 
+</style>
