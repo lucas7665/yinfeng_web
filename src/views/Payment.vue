@@ -1,7 +1,7 @@
 <template>
   <div class="payment-container">
     <div class="payment-card">
-      <h1>升级会员2</h1>
+      <h1>升级会员</h1>
       
       <div class="price-section">
         <h2>¥99.00</h2>
@@ -11,8 +11,8 @@
       <div class="benefits-section">
         <h3>会员权益</h3>
         <ul>
-          <li>每月500条对话额度</li>
-          <li>优先客服支持</li>
+          <li>增加对话额度</li>
+          <li>优先对话支持</li>
           <li>高级AI模型使用权限</li>
           <li>自定义知识库</li>
         </ul>
@@ -222,13 +222,13 @@ const checkPaymentStatus = async (orderNo) => {
       const res = await http.get(`/api/auth/wechat/payment/query/${orderNo}`)
       console.log('支付状态查询结果:', res.data)
 
-      if (res.data.code === 0) {
+      if (res.data.code === 200) {
         const { orderStatus } = res.data.data
         console.log('订单状态:', orderStatus)
         
-        if (orderStatus === 'SUCCESS') {
+        if (orderStatus === 2) {
           showToast('支付成功')
-          router.push('/report')
+          router.push('/assistant')
           return
         }
       }

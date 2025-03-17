@@ -146,7 +146,7 @@ const currentSessionTitle = ref('健康助手')
 // 创建 axios 实例
 const http = axios.create({
   baseURL: 'https://lgj-8082.colorstoneai.com',
-  timeout: 30000,
+  timeout: 60000,
   headers: {
     'Content-Type': 'application/json'
   },
