@@ -28,7 +28,7 @@
     <div class="info-section">
       <div class="section-title">基本信息</div>
       <van-cell-group inset>
-        <van-cell title="姓名" :value="userInfo.username || '未设置'" />
+        <van-cell title="姓名" :value="userInfo.realName || '未设置'" />
         <van-cell title="手机号" :value="formatPhone(userInfo.phone) || '未绑定'" />
         <van-cell title="身高" :value="userInfo.height ? `${userInfo.height}cm` : '未设置'" />
         <van-cell title="体重" :value="userInfo.weight ? `${userInfo.weight}kg` : '未设置'" />
@@ -66,6 +66,11 @@
   >
     <van-form>
       <van-cell-group inset>
+        <van-field
+          v-model="editForm.realName"
+          label="姓名"
+          placeholder="请输入姓名"
+        />
         <van-field
           v-model="editForm.nickname"
           label="昵称"
@@ -125,6 +130,7 @@ const reportCount = ref(0)
 const planCount = ref(0)
 const showEditDialog = ref(false)
 const editForm = ref({
+  realName: '',
   nickname: '',
   height: '',
   weight: ''
@@ -189,6 +195,7 @@ const getUserInfo = async () => {
       userInfo.value = res.data.data
       // 初始化编辑表单
       editForm.value = {
+        realName: userInfo.value.realName || '',
         nickname: userInfo.value.nickname || '',
         height: userInfo.value.height || '',
         weight: userInfo.value.weight || ''
@@ -229,12 +236,11 @@ const handleEditConfirm = async () => {
       forbidClick: true,
     })
 
-    // 修改为 PUT 请求
     const res = await http.put('/api/profile/updateInfo', {
-      // 按照 UpdateProfileRequest 的格式构造请求体
+      realName: editForm.value.realName,
       nickname: editForm.value.nickname,
-      height: Number(editForm.value.height) || null,  // 转换为数字
-      weight: Number(editForm.value.weight) || null   // 转换为数字
+      height: Number(editForm.value.height) || null,
+      weight: Number(editForm.value.weight) || null
     })
     
     if (res.data.code === 0) {
