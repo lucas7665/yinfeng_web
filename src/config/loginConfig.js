@@ -24,7 +24,7 @@ export const loginConfig = {
   // 微信登录配置
   wechat: {
     enabled: true, // 启用微信登录
-    dividerText: '其他登录方式',
+    dividerText: '',
     buttonText: '微信登录',
     buttonColor: '#07c160'
   }
