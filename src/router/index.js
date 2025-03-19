@@ -65,8 +65,12 @@ router.beforeEach((to, from, next) => {
     if (to.name === 'PaymentWithGroup') {
       const groupId = to.params.groupId
       localStorage.setItem('pendingPaymentGroupId', groupId)
+      // 保存来源页面路径
+      localStorage.setItem('loginRedirectPath', to.fullPath)
       next('/login')
     } else {
+      // 保存来源页面路径
+      localStorage.setItem('loginRedirectPath', to.fullPath)
       next('/login')
     }
   } else if (to.path === '/login' && token) {
@@ -77,7 +81,14 @@ router.beforeEach((to, from, next) => {
       localStorage.removeItem('pendingPaymentGroupId')
       next(`/payment/${pendingGroupId}`)
     } else {
-      next('/report')
+      // 检查是否有保存的重定向路径
+      const redirectPath = localStorage.getItem('loginRedirectPath')
+      if (redirectPath) {
+        localStorage.removeItem('loginRedirectPath')
+        next(redirectPath)
+      } else {
+        next('/report')
+      }
     }
   } else {
     next()

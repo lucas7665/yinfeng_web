@@ -105,7 +105,7 @@ onMounted(async () => {
         
         // eslint-disable-next-line no-undef
         wx.config({
-          debug: true, // 开启调试模式
+          debug: false, // 关闭调试模式
           appId: config.appId,
           timestamp: config.timestamp,
           nonceStr: config.nonceStr,

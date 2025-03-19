@@ -3,88 +3,162 @@
     <van-nav-bar title="登录" />
     
     <div class="login-form">
-      <van-tabs v-model:active="activeTab">
-        <!-- 账号密码登录 -->
-        <van-tab title="账号密码登录">
-          <van-form @submit="onPasswordSubmit">
-            <van-cell-group inset>
-              <van-field
-                v-model="passwordForm.username"
-                name="username"
-                label="用户名"
-                placeholder="请输入用户名"
-                :rules="[{ required: true, message: '请输入用户名' }]"
-              />
-              <van-field
-                v-model="passwordForm.password"
-                type="password"
-                name="password"
-                label="密码"
-                placeholder="请输入密码"
-                :rules="[{ required: true, message: '请输入密码' }]"
-              />
-            </van-cell-group>
-            <div class="submit-btn">
-              <van-button round block type="primary" native-type="submit">
-                登录
-              </van-button>
-            </div>
-          </van-form>
-        </van-tab>
+      <!-- 只有当有多个启用的登录方式时才显示标签页 -->
+      <template v-if="enabledLoginTabs.length > 1">
+        <van-tabs v-model:active="activeTab">
+          <!-- 账号密码登录 -->
+          <van-tab 
+            v-if="loginConfig.password.enabled" 
+            :title="loginConfig.password.title"
+          >
+            <van-form @submit="onPasswordSubmit">
+              <van-cell-group inset>
+                <van-field
+                  v-model="passwordForm.username"
+                  name="username"
+                  :label="loginConfig.password.usernameLabel"
+                  :placeholder="loginConfig.password.usernamePlaceholder"
+                  :rules="[{ required: true, message: '请输入用户名' }]"
+                />
+                <van-field
+                  v-model="passwordForm.password"
+                  type="password"
+                  name="password"
+                  :label="loginConfig.password.passwordLabel"
+                  :placeholder="loginConfig.password.passwordPlaceholder"
+                  :rules="[{ required: true, message: '请输入密码' }]"
+                />
+              </van-cell-group>
+              <div class="submit-btn">
+                <van-button round block type="primary" native-type="submit">
+                  {{ loginConfig.password.submitText }}
+                </van-button>
+              </div>
+            </van-form>
+          </van-tab>
 
-        <!-- 手机验证码登录 -->
-        <van-tab title="验证码登录">
-          <van-form @submit="onSubmit">
-            <van-cell-group inset>
-              <van-field
-                v-model="phone"
-                name="phone"
-                label="手机号"
-                placeholder="请输入手机号"
-                :rules="[{ required: true, message: '请填写手机号' }]"
-              />
-              <van-field
-                v-model="code"
-                name="code"
-                label="验证码"
-                placeholder="请输入验证码"
-                :rules="[{ required: true, message: '请填写验证码' }]"
-              >
-                <template #button>
-                  <van-button 
-                    size="small" 
-                    type="primary" 
-                    @click="getCode"
-                    :disabled="!!cooldown"
-                  >
-                    {{ cooldown ? `${cooldown}s后重试` : '获取验证码' }}
-                  </van-button>
-                </template>
-              </van-field>
-            </van-cell-group>
-            <div style="margin: 16px;">
-              <van-button round block type="primary" native-type="submit">
-                登录
-              </van-button>
-            </div>
-          </van-form>
-        </van-tab>
-      </van-tabs>
+          <!-- 手机验证码登录 -->
+          <van-tab 
+            v-if="loginConfig.sms.enabled" 
+            :title="loginConfig.sms.title"
+          >
+            <van-form @submit="onSubmit">
+              <van-cell-group inset>
+                <van-field
+                  v-model="phone"
+                  name="phone"
+                  :label="loginConfig.sms.phoneLabel"
+                  :placeholder="loginConfig.sms.phonePlaceholder"
+                  :rules="[{ required: true, message: '请填写手机号' }]"
+                />
+                <van-field
+                  v-model="code"
+                  name="code"
+                  :label="loginConfig.sms.codeLabel"
+                  :placeholder="loginConfig.sms.codePlaceholder"
+                  :rules="[{ required: true, message: '请填写验证码' }]"
+                >
+                  <template #button>
+                    <van-button 
+                      size="small" 
+                      type="primary" 
+                      @click="getCode"
+                      :disabled="!!cooldown"
+                    >
+                      {{ cooldown ? `${cooldown}s后重试` : loginConfig.sms.getCodeText }}
+                    </van-button>
+                  </template>
+                </van-field>
+              </van-cell-group>
+              <div style="margin: 16px;">
+                <van-button round block type="primary" native-type="submit">
+                  {{ loginConfig.sms.submitText }}
+                </van-button>
+              </div>
+            </van-form>
+          </van-tab>
+        </van-tabs>
+      </template>
 
-      <!-- 添加微信登录按钮 -->
-      <div class="other-login">
+      <!-- 如果只有一个登录方式，直接显示对应的表单 -->
+      <template v-else>
+        <!-- 密码登录表单 -->
+        <van-form v-if="loginConfig.password.enabled" @submit="onPasswordSubmit">
+          <van-cell-group inset>
+            <van-field
+              v-model="passwordForm.username"
+              name="username"
+              :label="loginConfig.password.usernameLabel"
+              :placeholder="loginConfig.password.usernamePlaceholder"
+              :rules="[{ required: true, message: '请输入用户名' }]"
+            />
+            <van-field
+              v-model="passwordForm.password"
+              type="password"
+              name="password"
+              :label="loginConfig.password.passwordLabel"
+              :placeholder="loginConfig.password.passwordPlaceholder"
+              :rules="[{ required: true, message: '请输入密码' }]"
+            />
+          </van-cell-group>
+          <div class="submit-btn">
+            <van-button round block type="primary" native-type="submit">
+              {{ loginConfig.password.submitText }}
+            </van-button>
+          </div>
+        </van-form>
+
+        <!-- 短信登录表单 -->
+        <van-form v-if="loginConfig.sms.enabled" @submit="onSubmit">
+          <van-cell-group inset>
+            <van-field
+              v-model="phone"
+              name="phone"
+              :label="loginConfig.sms.phoneLabel"
+              :placeholder="loginConfig.sms.phonePlaceholder"
+              :rules="[{ required: true, message: '请填写手机号' }]"
+            />
+            <van-field
+              v-model="code"
+              name="code"
+              :label="loginConfig.sms.codeLabel"
+              :placeholder="loginConfig.sms.codePlaceholder"
+              :rules="[{ required: true, message: '请填写验证码' }]"
+            >
+              <template #button>
+                <van-button 
+                  size="small" 
+                  type="primary" 
+                  @click="getCode"
+                  :disabled="!!cooldown"
+                >
+                  {{ cooldown ? `${cooldown}s后重试` : loginConfig.sms.getCodeText }}
+                </van-button>
+              </template>
+            </van-field>
+          </van-cell-group>
+          <div style="margin: 16px;">
+            <van-button round block type="primary" native-type="submit">
+              {{ loginConfig.sms.submitText }}
+            </van-button>
+          </div>
+        </van-form>
+      </template>
+
+      <!-- 其他登录方式 -->
+      <div v-if="loginConfig.wechat.enabled" class="other-login">
         <div class="divider">
-          <span>其他登录方式</span>
+          <span>{{ loginConfig.wechat.dividerText }}</span>
         </div>
         <div class="social-login">
           <van-button 
             round 
             icon="wechat" 
-            color="#07c160" 
+            :color="loginConfig.wechat.buttonColor" 
             class="wechat-btn"
             @click="handleWxLogin"
           >
-            微信登录
+            {{ loginConfig.wechat.buttonText }}
           </van-button>
         </div>
       </div>
@@ -93,17 +167,25 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { showToast, showLoadingToast, closeToast } from 'vant'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
+import { loginConfig } from '@/config/loginConfig'
+
+// 计算启用的登录标签页
+const enabledLoginTabs = computed(() => {
+  const tabs = []
+  if (loginConfig.password.enabled) tabs.push('password')
+  if (loginConfig.sms.enabled) tabs.push('sms')
+  return tabs
+})
 
 const router = useRouter()
 const activeTab = ref(0)
 const phone = ref('')
 const code = ref('')
 const cooldown = ref(0)
-
 const passwordForm = ref({
   username: '',
   password: ''
@@ -118,7 +200,29 @@ const http = axios.create({
   }
 })
 
-// 账号密码登录
+// 添加一个通用的登录成功处理函数
+const handleLoginSuccess = async (token) => {
+  localStorage.setItem('token', token)
+  showToast('登录成功')
+  
+  // 检查是否有待处理的支付
+  const pendingGroupId = localStorage.getItem('pendingPaymentGroupId')
+  if (pendingGroupId) {
+    localStorage.removeItem('pendingPaymentGroupId')
+    await router.push(`/payment/${pendingGroupId}`)
+  } else {
+    // 检查是否有保存的重定向路径
+    const redirectPath = localStorage.getItem('loginRedirectPath')
+    if (redirectPath) {
+      localStorage.removeItem('loginRedirectPath')
+      await router.push(redirectPath)
+    } else {
+      await router.push('/report')
+    }
+  }
+}
+
+// 修改账号密码登录
 const onPasswordSubmit = async (values) => {
   try {
     const res = await http.post('/api/auth/login', {
@@ -126,11 +230,7 @@ const onPasswordSubmit = async (values) => {
       password: values.password
     })
     if (res.data.code === 0) {
-      // 保存 token
-      localStorage.setItem('token', res.data.data.token)
-      showToast('登录成功')
-      // 确保异步操作完成后再跳转
-      await router.push('/report')
+      await handleLoginSuccess(res.data.data.token)
     } else {
       showToast(res.data.message || '登录失败')
     }
@@ -147,7 +247,6 @@ const getCode = async () => {
     return
   }
   
-  // 验证手机号格式
   if (!/^1[3-9]\d{9}$/.test(phone.value)) {
     showToast('请输入正确的手机号')
     return
@@ -159,14 +258,12 @@ const getCode = async () => {
       forbidClick: true,
     })
 
-    // 修改为正确的发送验证码接口
     const res = await http.post('/api/sms/send-code', {
       phone: phone.value
     })
 
     if (res.data.code === 0) {
       showToast('验证码已发送')
-      // 开始倒计时
       cooldown.value = 60
       const timer = setInterval(() => {
         cooldown.value--
@@ -185,7 +282,7 @@ const getCode = async () => {
   }
 }
 
-// 提交登录
+// 修改短信登录提交
 const onSubmit = async () => {
   if (!phone.value || !code.value) {
     showToast('请输入手机号和验证码')
@@ -198,16 +295,13 @@ const onSubmit = async () => {
       forbidClick: true,
     })
 
-    // 直接调用登录接口，传入手机号和验证码
     const res = await http.post('/api/auth/login/phone', {
       phone: phone.value,
-      code: code.value  // 登录时需要传验证码
+      code: code.value
     })
 
     if (res.data.code === 0) {
-      localStorage.setItem('token', res.data.data.token)
-      showToast('登录成功')
-      router.push('/')
+      await handleLoginSuccess(res.data.data.token)
     } else {
       showToast(res.data.message || '登录失败')
     }
@@ -219,7 +313,7 @@ const onSubmit = async () => {
   }
 }
 
-// 微信登录处理
+// 修改微信登录处理
 const handleWxLogin = async () => {
   try {
     showLoadingToast({
@@ -227,11 +321,18 @@ const handleWxLogin = async () => {
       forbidClick: true,
     })
 
-    // 获取微信授权URL
-    const res = await http.get('/api/auth/wechat/auth-url')
+    // 获取待处理的群组ID和重定向路径
+    const pendingGroupId = localStorage.getItem('pendingPaymentGroupId')
+    const redirectPath = localStorage.getItem('loginRedirectPath')
+    
+    const res = await http.get('/api/auth/wechat/auth-url', {
+      params: {
+        groupId: pendingGroupId,
+        redirectPath: redirectPath
+      }
+    })
     
     if (res.data.code === 200) {
-      // 跳转到微信授权页面
       window.location.href = res.data.data
     } else {
       showToast('获取微信登录链接失败')
