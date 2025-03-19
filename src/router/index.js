@@ -38,6 +38,12 @@ const routes = [
     component: () => import('../views/Payment.vue')
   },
   {
+    path: '/payment/:groupId',
+    name: 'PaymentWithGroup',
+    component: () => import('@/views/Payment.vue'),
+    meta: { requiresAuth: true }  // 添加登录验证
+  },
+  {
     path: '/api/auth/wechat/callback',
     name: 'WxCallback',
     component: () => import('../views/WxCallback.vue')
@@ -54,11 +60,25 @@ router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('token')
   
   if (to.meta.requiresAuth && !token) {
-    // 需要登录但没有 token，跳转到登录页
-    next('/login')
+    // 需要登录但没有token，跳转到登录页
+    // 如果是支付页面，保存群组ID
+    if (to.name === 'PaymentWithGroup') {
+      const groupId = to.params.groupId
+      localStorage.setItem('pendingPaymentGroupId', groupId)
+      next('/login')
+    } else {
+      next('/login')
+    }
   } else if (to.path === '/login' && token) {
-    // 已登录状态下访问登录页，跳转到首页
-    next('/report')
+    // 已登录状态下访问登录页
+    // 检查是否有待处理的支付
+    const pendingGroupId = localStorage.getItem('pendingPaymentGroupId')
+    if (pendingGroupId) {
+      localStorage.removeItem('pendingPaymentGroupId')
+      next(`/payment/${pendingGroupId}`)
+    } else {
+      next('/report')
+    }
   } else {
     next()
   }

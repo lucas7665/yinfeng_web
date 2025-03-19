@@ -1,7 +1,7 @@
 <template>
   <div class="payment-container">
     <div class="payment-card">
-      <h1>升级会员</h1>
+      <h1>升级会员22</h1>
       
       <div class="price-section">
         <h2>¥99.00</h2>
@@ -27,12 +27,14 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { showToast } from 'vant'
-import { useRouter } from 'vue-router'
+import { showToast, showLoadingToast, showDialog, closeToast } from 'vant'
+import { useRouter, useRoute } from 'vue-router'
 import axios from 'axios'
 
 const router = useRouter()
+const route = useRoute()
 const loading = ref(false)
+const groupId = ref('')
 
 // 创建 axios 实例
 const http = axios.create({
@@ -58,11 +60,36 @@ const isWeixinBrowser = () => {
   return ua.indexOf('micromessenger') !== -1
 }
 
-// 组件挂载时初始化微信配置
+// 从URL路径中提取群组ID
+const extractGroupIdFromPath = () => {
+  const path = window.location.pathname
+  const match = path.match(/\/payment\/(\d+)/)
+  if (match && match[1]) {
+    return match[1]
+  }
+  return null
+}
+
+// 组件挂载时初始化
 onMounted(async () => {
+  // 获取群组ID
+  const pathGroupId = extractGroupIdFromPath()
+  if (pathGroupId) {
+    groupId.value = pathGroupId
+    console.log('从URL路径中获取到群组ID:', pathGroupId)
+    
+    // 检查登录状态
+    const token = localStorage.getItem('token')
+    if (!token) {
+      console.log('未登录状态，保存群组ID并跳转到登录页')
+      localStorage.setItem('pendingPaymentGroupId', pathGroupId)
+      router.push('/login')
+      return
+    }
+  }
+  
   if (isWeixinBrowser()) {
     try {
-      console.log('开始初始化微信配置...')
       // 获取当前页面URL（去除hash部分）
       const url = window.location.href.split('#')[0]
       console.log('当前页面URL:', url)
@@ -72,9 +99,7 @@ onMounted(async () => {
         params: { url }
       })
       
-      console.log('JSAPI配置响应:', res.data)
-      
-      if (res.data.code === 0) {
+      if (res.data.code === 0 || res.data.code === 200) {
         const config = res.data.data
         console.log('准备配置微信JSSDK:', config)
         
@@ -115,13 +140,11 @@ onMounted(async () => {
       console.error('初始化微信配置失败:', error)
       showToast('初始化失败，请刷新页面重试')
     }
-  } else {
-    console.log('非微信浏览器环境')
   }
 })
 
 // 定义 WeixinJSBridge 支付函数
-const onBridgeReady = (params, orderNo) => {
+const onBridgeReady = (params, orderNo, groupId) => {
   return () => {
     WeixinJSBridge.invoke(
       'getBrandWCPayRequest', 
@@ -131,7 +154,7 @@ const onBridgeReady = (params, orderNo) => {
           console.log('支付成功响应:', res)
           showToast('支付成功')
           // 开始轮询支付结果
-          checkPaymentStatus(orderNo)
+          checkPaymentStatus(orderNo, groupId)
         } else if (res.err_msg === "get_brand_wcpay_request:cancel") {
           console.log('用户取消支付')
           showToast('已取消支付')
@@ -144,41 +167,69 @@ const onBridgeReady = (params, orderNo) => {
   }
 }
 
+// 处理微信授权
+const handleWechatAuth = async () => {
+  try {
+    showLoadingToast({
+      message: '正在跳转授权...',
+      forbidClick: true,
+    })
+
+    const res = await http.get('/api/auth/wechat/auth-url', {
+      params: {
+        groupId: groupId.value, // 传递群组ID
+        redirect: window.location.href // 传递当前完整URL作为回调
+      }
+    })
+    
+    if (res.data.code === 200) {
+      // 保存群组ID到localStorage，以便授权回调后恢复
+      if (groupId.value) {
+        localStorage.setItem('pendingPaymentGroupId', groupId.value)
+      }
+      window.location.href = res.data.data
+    } else {
+      showToast(res.data.message || '获取授权链接失败')
+    }
+  } catch (error) {
+    console.error('获取授权链接失败:', error)
+    showToast('获取授权链接失败，请重试')
+  } finally {
+    closeToast()
+  }
+}
+
 // 处理支付
 const handlePayment = async () => {
   if (loading.value) return
-  
-  if (!isWeixinBrowser()) {
-    showToast('请在微信浏览器中打开')
-    return
-  }
   
   loading.value = true
   let orderNo = ''
 
   try {
-    console.log('开始创建支付订单...')
-    const token = localStorage.getItem('token')
-    const auth = localStorage.getItem('Authorization')
-    console.log('当前认证信息:', { token, auth })
-
-    // 创建JSAPI支付订单
+    console.log('开始创建支付订单...群组ID:', groupId.value)
     const res = await http.post('/api/auth/wechat/payment/jsapi', null, {
-      headers: {
-        'Authorization': localStorage.getItem('Authorization')
+      params: {
+        groupId: groupId.value
       }
     })
-    
-    console.log('支付订单创建响应:', res.data)
     
     if (res.data.code === 200) {
       const payParams = res.data.data
       orderNo = payParams.orderNo
-      console.log('获取到支付参数:', payParams)
+      const responseGroupId = payParams.groupId || groupId.value
       
-      // 转换时间戳格式
+      if (!isWeixinBrowser()) {
+        showDialog({
+          title: '提示',
+          message: '请在微信浏览器中打开进行支付',
+          confirmButtonText: '我知道了'
+        })
+        return
+      }
+
       const params = {
-        timeStamp: payParams.timeStamp, // 注意这里使用 timeStamp
+        timeStamp: payParams.timeStamp,
         nonceStr: payParams.nonceStr,
         package: payParams.package,
         signType: payParams.signType,
@@ -186,59 +237,63 @@ const handlePayment = async () => {
         appId: payParams.appId
       }
       
-      console.log('准备调起支付:', params)
-      
-      // 使用 WeixinJSBridge 调起支付
       if (typeof WeixinJSBridge === 'undefined') {
         if (document.addEventListener) {
-          document.addEventListener('WeixinJSBridgeReady', onBridgeReady(params, orderNo), false)
+          document.addEventListener('WeixinJSBridgeReady', onBridgeReady(params, orderNo, responseGroupId), false)
         } else if (document.attachEvent) {
-          document.attachEvent('WeixinJSBridgeReady', onBridgeReady(params, orderNo))
-          document.attachEvent('onWeixinJSBridgeReady', onBridgeReady(params, orderNo))
+          document.attachEvent('WeixinJSBridgeReady', onBridgeReady(params, orderNo, responseGroupId))
+          document.attachEvent('onWeixinJSBridgeReady', onBridgeReady(params, orderNo, responseGroupId))
         }
       } else {
-        onBridgeReady(params, orderNo)()
+        onBridgeReady(params, orderNo, responseGroupId)()
       }
+    } else if (res.data.code === 400 && res.data.message === '用户未绑定微信openId') {
+      handleWechatAuth()
+    } else if (res.data.code === 401) {
+      handleWechatAuth()
     } else {
       showToast(res.data.message || '创建支付订单失败')
     }
   } catch (error) {
     console.error('支付处理失败:', error)
-    showToast('支付失败，请稍后重试')
+    if (error.response?.status === 401) {
+      handleWechatAuth()
+    } else {
+      showToast('支付失败，请稍后重试')
+    }
   } finally {
     loading.value = false
   }
 }
 
 // 检查支付状态
-const checkPaymentStatus = async (orderNo) => {
+const checkPaymentStatus = async (orderNo, groupId) => {
   let retryCount = 0
   const maxRetries = 10
-  const interval = 1000 // 1秒
+  const interval = 1000
 
   const check = async () => {
     try {
-      console.log(`开始第${retryCount + 1}次查询支付结果 - orderNo:`, orderNo)
       const res = await http.get(`/api/auth/wechat/payment/query/${orderNo}`)
-      console.log('支付状态查询结果:', res.data)
-
+      
       if (res.data.code === 200) {
         const { orderStatus } = res.data.data
-        console.log('订单状态:', orderStatus)
         
         if (orderStatus === 2) {
           showToast('支付成功')
-          router.push('/assistant')
+          if (groupId) {
+            router.push(`/group/${groupId}`)
+          } else {
+            router.push('/assistant')
+          }
           return
         }
       }
 
       if (retryCount < maxRetries) {
         retryCount++
-        console.log(`等待${interval}ms后进行第${retryCount + 1}次查询`)
         setTimeout(check, interval)
       } else {
-        console.log('支付状态查询超时')
         showToast('支付结果确认中，请稍后查看订单')
       }
     } catch (error) {
