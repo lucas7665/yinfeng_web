@@ -261,7 +261,7 @@ const getReportList = async () => {
       params: {
         page: currentPage.value,
         size: pageSize,
-        planType: 1  // 添加 planType=1 表示我的报告
+        reportType: 1  // 修改为reportType=1 表示我的报告
       }
     })
     
@@ -302,6 +302,9 @@ const uploadFile = async (e) => {
 
   const formData = new FormData()
   formData.append('file', file)
+  // 根据当前标签页确定报告类型: 'my' -> 1, 'others' -> 2
+  const reportType = activeTab.value === 'my' ? 1 : 2
+  formData.append('reportType', reportType)
 
   try {
     showLoadingToast({
@@ -316,8 +319,15 @@ const uploadFile = async (e) => {
     })
     if (res.data.code === 0) {
       showToast('上传成功')
-      currentPage.value = 1 // 重置到第一页
-      getReportList()
+      
+      // 根据当前标签页刷新对应的列表
+      if (activeTab.value === 'my') {
+        currentPage.value = 1 // 重置到第一页
+        getReportList()
+      } else {
+        otherPage.value = 1 // 重置到第一页
+        getOtherReports()
+      }
     } else {
       showToast(res.data.message || '上传失败')
     }
@@ -332,6 +342,8 @@ const uploadFile = async (e) => {
     }
   } finally {
     closeToast()
+    // 清空文件输入，确保可以重复上传同一个文件
+    fileInput.value.value = ''
   }
 }
 
@@ -358,7 +370,7 @@ const generatePDF = async () => {
     const params = new URLSearchParams()
     params.append('reportId', selectedReport.id)
     params.append('reportUrl', selectedReport.fileUrl)
-    params.append('planType', '1')
+    params.append('reportType', '1')  // 我的报告类型为1
 
     const res = await http.post('/api/health-plan/generatepdf', params, {
       headers: {
@@ -369,6 +381,7 @@ const generatePDF = async () => {
     
     if (res.data.code === 0) {
       showToast('PDF生成成功')
+      getReportList() // 刷新列表，更新状态
     } else {
       showToast(res.data.message || 'PDF生成失败')
     }
@@ -480,7 +493,7 @@ const getOtherReports = async () => {
       params: {
         page: otherPage.value,
         size: otherPageSize,
-        planType: 2
+        reportType: 2  // 修改为reportType=2 表示他人报告
       }
     })
     
@@ -529,7 +542,7 @@ const generateOtherPDF = async () => {
     const params = new URLSearchParams()
     params.append('reportId', selectedReport.id)
     params.append('reportUrl', selectedReport.fileUrl)
-    params.append('planType', '2')  // 他人报告
+    params.append('reportType', '2')  // 他人报告类型为2
 
     const res = await http.post('/api/health-plan/generatepdf', params, {
       headers: {
@@ -540,6 +553,7 @@ const generateOtherPDF = async () => {
     
     if (res.data.code === 0) {
       showToast('PDF生成成功')
+      getOtherReports() // 刷新列表，更新状态
     } else {
       showToast(res.data.message || 'PDF生成失败')
     }
