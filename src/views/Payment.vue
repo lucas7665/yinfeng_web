@@ -1,7 +1,7 @@
 <template>
   <div class="payment-container">
     <div class="payment-card">
-      <h1>升级会员22</h1>
+      <h1>升级会员</h1>
       
       <div class="price-section">
         <h2>¥99.00</h2>

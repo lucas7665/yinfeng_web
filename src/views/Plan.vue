@@ -222,6 +222,7 @@ const getPlanList = async () => {
       forbidClick: true,
     })
 
+    console.log('获取我的方案列表，planType=1')
     const res = await http.get(`/api/health-plan/list`, {
       params: {
         page: currentPage.value,
@@ -233,6 +234,7 @@ const getPlanList = async () => {
     if (res.data.code === 0) {
       plans.value = res.data.data || []
       total.value = res.data.total || 0
+      console.log('获取我的方案成功，数量:', plans.value.length)
     } else {
       showToast(res.data.message || '获取列表失败')
     }
@@ -262,6 +264,7 @@ const getOtherPlans = async () => {
       forbidClick: true,
     })
 
+    console.log('获取他人方案列表，planType=2')
     const res = await http.get('/api/health-plan/list', {
       params: {
         page: otherPage.value,
@@ -273,6 +276,7 @@ const getOtherPlans = async () => {
     if (res.data.code === 0) {
       otherPlans.value = res.data.data || []
       otherTotal.value = res.data.total || 0
+      console.log('获取他人方案成功，数量:', otherPlans.value.length)
     } else {
       showToast(res.data.message || '获取列表失败')
     }
@@ -292,9 +296,15 @@ const getOtherPlans = async () => {
 }
 
 // 监听 tab 切换
-watch(activeTab, () => {
-  currentPage.value = 1  // 切换 tab 时重置页码
-  getPlanList()
+watch(activeTab, (newVal) => {
+  console.log('标签页切换到:', newVal)
+  if (newVal === 'my') {
+    currentPage.value = 1  // 切换 tab 时重置页码
+    getPlanList()
+  } else if (newVal === 'others') {
+    otherPage.value = 1  // 切换到他人方案时重置页码
+    getOtherPlans()
+  }
 })
 
 // 分页变化处理
@@ -316,7 +326,10 @@ const getOtherDisplayIndex = (index) => {
 // 修改查看方案方法
 const viewPlan = (plan, index) => {
   currentPlan.value = plan
-  const isOtherPlan = plan.planType === 2
+  
+  // 通过当前活动的标签页来判断是否为他人方案
+  const isOtherPlan = activeTab.value === 'others'
+  
   previewTitle.value = isOtherPlan 
     ? `第${getOtherDisplayIndex(index)}次健康方案`
     : `第${getDisplayIndex(index)}次健康方案`
@@ -360,6 +373,7 @@ ${plan.summary || '无'}
     }
   }
   
+  console.log('查看方案:', isOtherPlan ? '他人方案' : '我的方案', plan)
   showPreview.value = true
 }
 
@@ -414,11 +428,21 @@ const confirmDelete = async () => {
     
     if (res.data.code === 0) {
       showToast('删除成功')
-      // 如果当前页只有一条数据且不是第一页，则跳转到上一页
-      if (plans.value.length === 1 && currentPage.value > 1) {
-        currentPage.value--
+      
+      // 根据当前标签页刷新对应的列表
+      if (activeTab.value === 'my') {
+        // 如果当前页只有一条数据且不是第一页，则跳转到上一页
+        if (plans.value.length === 1 && currentPage.value > 1) {
+          currentPage.value--
+        }
+        getPlanList()  // 刷新我的方案列表
+      } else {
+        // 如果当前页只有一条数据且不是第一页，则跳转到上一页
+        if (otherPlans.value.length === 1 && otherPage.value > 1) {
+          otherPage.value--
+        }
+        getOtherPlans()  // 刷新他人方案列表
       }
-      getPlanList()  // 刷新列表
     } else {
       showToast(res.data.message || '删除失败')
     }
@@ -443,16 +467,8 @@ const onOtherPageChange = (page) => {
   getOtherPlans()
 }
 
-// 监听标签页切换
-watch(activeTab, (newVal) => {
-  if (newVal === 'others') {
-    if (otherPlans.value.length === 0) {
-      getOtherPlans()
-    }
-  }
-})
-
 onMounted(() => {
+  // 根据初始标签页加载对应数据
   if (activeTab.value === 'my') {
     getPlanList()
   } else if (activeTab.value === 'others') {
